@@ -162,7 +162,7 @@ extension ConnectToNewDeviceTests {
 
 // Succesfull connected state
 extension ConnectToNewDeviceTests {
-  func test_connectionState_changesToConnected() async throws {
+  func test_successfulConnection_connectionState_changesToConnected() async throws {
     let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
     guard let device = await devices.first(where: { await $0.identifier == mockPeripheralSuccess.identifier }) else {
       XCTFail("couldn't get device")
@@ -190,7 +190,7 @@ extension ConnectToNewDeviceTests {
     }
   }
 
-  func test_connectionState_isConnected() async throws {
+  func test_successfulConnection_connectionState_isConnected() async throws {
     let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
     guard let device = await devices.first(where: { await $0.identifier == mockPeripheralSuccess.identifier }) else {
       XCTFail("couldn't get device")
@@ -210,7 +210,7 @@ extension ConnectToNewDeviceTests {
     }
   }
 
-  func test_connectWithStream_isConnected() async throws {
+  func test_successfulConnection_connectWithStream_isConnected() async throws {
     let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
     guard let device = await devices.first(where: { await $0.identifier == mockPeripheralSuccess.identifier }) else {
       XCTFail("couldn't get device")
@@ -230,7 +230,7 @@ extension ConnectToNewDeviceTests {
     }
   }
 
-  func test_initialConnectedState_worksForMultipleListeners() async throws {
+  func test_successfulConnection_initialConnectedState_worksForMultipleListeners() async throws {
     let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
     guard let device = await devices.first(where: { await $0.identifier == mockPeripheralSuccess.identifier }) else {
       XCTFail("couldn't get device")
@@ -241,6 +241,110 @@ extension ConnectToNewDeviceTests {
       for await connectionState in stream {
         let expectedState: Peripheral.ConnectionState = .connected
         XCTAssertEqual(connectionState, expectedState, "Expected connectionState to be \(expectedState), got \(connectionState)")
+        break
+      }
+    }
+    let stream1 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
+    let stream2 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
+    let stream3 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
+    let connectionStates = await centralManager.connect(device).dropFirst()
+    await withTaskGroup(of: Void.self) { taskGroup in
+      taskGroup.addTask { await assertConnectionStates(stream: stream1) }
+      taskGroup.addTask { await assertConnectionStates(stream: stream2) }
+      taskGroup.addTask { await assertConnectionStates(stream: stream3) }
+      taskGroup.addTask { await assertConnectionStates(stream: connectionStates) }
+    }
+  }
+}
+
+// UnSuccesfull connected state
+extension ConnectToNewDeviceTests {
+  func assetConnectionStateIsConnectionFailed(_ connectionState: Peripheral.ConnectionState) {
+    if case let .failedToConnect(err) = connectionState {
+      XCTAssertEqual(err.code, CBMError.connectionFailed)
+    } else {
+      XCTFail("Unexpected connection state expected \(connectionState) to be connectionFailed")
+    }
+  }
+
+  func test_unsuccessfulConnection_connectionState_changesToFailed() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+    guard let device = await devices.first(where: { await $0.identifier == mockPeripheralFailure.identifier }) else {
+      XCTFail("couldn't get device")
+      return
+    }
+
+    var i = 0
+    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+      if i == 0 {
+        await centralManager.connect(device)
+        i += 1
+        continue
+      }
+      if i == 1 {
+        i += 1
+        continue
+      }
+      // stream state
+      assetConnectionStateIsConnectionFailed(connectionState)
+
+      // device connection state property
+      let deviceConnectionState = await device.connectionState
+      assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      break
+    }
+  }
+
+  func test_unsuccessfulConnection_connectionState_isFailed() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+    guard let device = await devices.first(where: { await $0.identifier == mockPeripheralFailure.identifier }) else {
+      XCTFail("couldn't get device")
+      return
+    }
+
+    await centralManager.connect(device)
+
+    for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
+      // stream state
+      assetConnectionStateIsConnectionFailed(connectionState)
+
+      // device connection state property
+      let deviceConnectionState = await device.connectionState
+      assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      break
+    }
+  }
+
+  func test_unsuccessfulConnection_connectWithStream_isFailed() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+    guard let device = await devices.first(where: { await $0.identifier == mockPeripheralFailure.identifier }) else {
+      XCTFail("couldn't get device")
+      return
+    }
+
+    let connectionStates = await centralManager.connect(device)
+
+    for await connectionState in connectionStates.dropFirst() {
+      // stream state
+      assetConnectionStateIsConnectionFailed(connectionState)
+
+      // device connection state property
+      let deviceConnectionState = await device.connectionState
+      assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      break
+    }
+  }
+
+  func test_unsuccessfulConnection_initialConnectedState_worksForMultipleListeners() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+    guard let device = await devices.first(where: { await $0.identifier == mockPeripheralFailure.identifier }) else {
+      XCTFail("couldn't get device")
+      return
+    }
+
+    @Sendable func assertConnectionStates(stream: AsyncDropFirstSequence<AsyncStream<Peripheral.ConnectionState>>) async {
+      for await connectionState in stream {
+        assetConnectionStateIsConnectionFailed(connectionState)
         break
       }
     }

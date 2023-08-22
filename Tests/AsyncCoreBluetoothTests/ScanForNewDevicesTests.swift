@@ -61,6 +61,7 @@ final class ScanForNewDevicesTests: XCTestCase, XCTestObservation {
   func test_scan_endsScanWhenTaskIsCanceled() async throws {
     func assertAllScanning(_ expectedState: Bool = false) async throws {
       try await Task.sleep(nanoseconds: 1)
+      try await Task.sleep(nanoseconds: 1)
       // Internal State
       let internalIsScanning = await centralManager.internalIsScanning
       XCTAssertEqual(internalIsScanning, expectedState, "internalIsScanning should be \(expectedState)")

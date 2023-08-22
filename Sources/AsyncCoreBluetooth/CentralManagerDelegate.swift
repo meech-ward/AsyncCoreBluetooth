@@ -26,15 +26,24 @@ extension CentralManager {
 
   func centralManager(_: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
     // print("centralManager \(central) didConnect \(cbPeripheral)")
+    let state: Peripheral.ConnectionState = .connected
     let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: cbPeripheral.identifier)
     for peripheralConnectionContinuation in peripheralConnectionContinuations {
-      await peripheralConnectionContinuation.peripheral.setConnectionState(.connected)
-      peripheralConnectionContinuation.continuation.yield(.connected)
+      await peripheralConnectionContinuation.peripheral.setConnectionState(state)
+      peripheralConnectionContinuation.continuation.yield(state)
     }
   }
 
   func centralManager(_ central: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) async {
-    print("centralManager \(central) didFailToConnect \(cbPeripheral) error \(String(describing: error))")
+    // print("centralManager \(central) didFailToConnect \(cbPeripheral) error \(String(describing: error))")
+
+    let error = error as? CBMError ?? CBMError(.unknown)
+    let state: Peripheral.ConnectionState = .failedToConnect(error)
+    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: cbPeripheral.identifier)
+    for peripheralConnectionContinuation in peripheralConnectionContinuations {
+      await peripheralConnectionContinuation.peripheral.setConnectionState(state)
+      peripheralConnectionContinuation.continuation.yield(state)
+    }
   }
 
   func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral cbPeripheral: CBMPeripheral, error: Error?) async {
