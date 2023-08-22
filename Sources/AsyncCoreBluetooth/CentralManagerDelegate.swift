@@ -15,39 +15,34 @@ extension CentralManager {
     print("centralManager \(central) willRestoreState \(dict)")
   }
 
-  func centralManager(_: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData _: [String: Any], rssi _: NSNumber) {
+  func centralManager(_: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData _: [String: Any], rssi _: NSNumber) async {
     // print("centralManager \(central) didDiscover \(cbPeripheral) advertisementData \(advertisementData) rssi \(RSSI)")
     guard let scanForPeripheralsContinuation = scanForPeripheralsContinuation else {
       return
     }
-    let p = Peripheral(cbPeripheral: cbPeripheral)
+    let p = await Peripheral(cbPeripheral: cbPeripheral)
     scanForPeripheralsContinuation.yield(p)
   }
 
   func centralManager(_: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
     // print("centralManager \(central) didConnect \(cbPeripheral)")
     let state: Peripheral.ConnectionState = .connected
-    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: cbPeripheral.identifier)
-    for peripheralConnectionContinuation in peripheralConnectionContinuations {
-      await peripheralConnectionContinuation.peripheral.setConnectionState(state)
-      peripheralConnectionContinuation.continuation.yield(state)
-    }
+    await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
-  func centralManager(_ central: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) async {
+  func centralManager(_: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) async {
     // print("centralManager \(central) didFailToConnect \(cbPeripheral) error \(String(describing: error))")
 
     let error = error as? CBMError ?? CBMError(.unknown)
     let state: Peripheral.ConnectionState = .failedToConnect(error)
-    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: cbPeripheral.identifier)
-    for peripheralConnectionContinuation in peripheralConnectionContinuations {
-      await peripheralConnectionContinuation.peripheral.setConnectionState(state)
-      peripheralConnectionContinuation.continuation.yield(state)
-    }
+    await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral cbPeripheral: CBMPeripheral, error: Error?) async {
     print("centralManager \(central) didDisconnectPeripheral \(cbPeripheral) error \(String(describing: error))")
+    let error = error as? CBMError
+    let state: Peripheral.ConnectionState = .disconnected(error)
+    await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_ central: CBMCentralManager, connectionEventDidOccur event: CBMConnectionEvent, for cbPeripheral: CBMPeripheral) async {

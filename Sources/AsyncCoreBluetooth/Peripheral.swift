@@ -3,6 +3,13 @@ import CoreBluetoothMock
 import Foundation
 
 public actor Peripheral: ObservableObject {
+
+  /// * Defaults to disconnected(nil)
+  /// * Calling connect() on the central manager will cause the connectionState to change to connecting
+  /// * After conencting, the device will change to connected or failedToConnect
+  /// * Calling disconnect() on the central manager will cause the connectionState to change to disconnecting
+  /// * After disconnecting, the device will change to disconnected(nil)
+  /// * If the device disconnects unexpectedly, the device will change straight from connected to disconnected(error)
   public enum ConnectionState: Equatable {
     case disconnected(CBError?)
     case connecting
@@ -13,17 +20,16 @@ public actor Peripheral: ObservableObject {
 
   public private(set) var cbPeripheral: CBMPeripheral
 
-  public var identifier: UUID {
-    cbPeripheral.identifier
-  }
-
+  @MainActor public private(set) var identifier: UUID 
   @MainActor @Published public internal(set) var connectionState: ConnectionState = .disconnected(nil)
-  @MainActor @Published public var name: String?
+  @MainActor @Published public private(set) var name: String?
 
   var delegate: CBMPeripheralDelegate?
 
-  init(cbPeripheral: CBMPeripheral) {
+  @MainActor init(cbPeripheral: CBMPeripheral) {
     self.cbPeripheral = cbPeripheral
+    identifier = cbPeripheral.identifier
+    name = cbPeripheral.name
   }
 
   func setConnectionState(_ state: ConnectionState) async {

@@ -185,9 +185,20 @@ public actor CentralManager: ObservableObject {
     return peripheralConnectionContinuations.values.filter { $0.peripheralUUID == peripheralUUID }
   }
 
+  func updatePeripheralConnectionState(peripheralUUID: UUID, state: Peripheral.ConnectionState) async {
+    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: peripheralUUID)
+    await peripheralConnectionContinuations.first?.peripheral.setConnectionState(state)
+    for peripheralConnectionContinuation in peripheralConnectionContinuations {
+      peripheralConnectionContinuation.continuation.yield(state)
+    }
+  }
+
   public enum PeripheralConnectionError: Error {
     case alreadyConnecting
     case alreadyConnected
+    case alreadyDisconnecting
+    case alreadyDisconnected
+    case failedToConnect
   }
 
   /// Establishes a local connection to a peripheral.
@@ -248,9 +259,29 @@ public actor CentralManager: ObservableObject {
 
   // return an async stream or don't, two optoins
   // same stream as connection
-  func cancelPeripheralConnection(_ peripheral: Peripheral) async {
+  @discardableResult public func cancelPeripheralConnection(_ peripheral: Peripheral) async throws -> AsyncStream<Peripheral.ConnectionState> {
+    // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
+    let currentConnectionState = await peripheral.connectionState
+    if case .disconnected(_) = currentConnectionState {
+      throw PeripheralConnectionError.alreadyDisconnected
+    }
+    if case .failedToConnect(_) = currentConnectionState {
+      throw PeripheralConnectionError.failedToConnect
+    }
+    guard currentConnectionState != .disconnecting else {
+      throw PeripheralConnectionError.alreadyDisconnecting
+    }
+
+    await peripheral.setConnectionState(.disconnecting)
+    let peripheralConnectionContinuations = await getPeripheralConnectionContinuations(peripheralUUID: peripheral.identifier)
+    peripheralConnectionContinuations.forEach { $0.continuation.yield(.disconnecting) }
+
+    let stream = await connectionState(forPeripheral: peripheral)
+
     let cbPeripheral = await peripheral.cbPeripheral
     centralManager.cancelPeripheralConnection(cbPeripheral)
+
+    return stream
   }
 
   // Todo
