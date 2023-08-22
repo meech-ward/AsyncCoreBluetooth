@@ -28,11 +28,13 @@ final class ScanForNewDevicesTests: XCTestCase, XCTestObservation {
   func test_scan_returnsDevices() async throws {
     let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
     for await device in devices {
-      XCTAssertEqual(device.identifier, mockPeripheral.identifier)
+      let id = await device.identifier
+      XCTAssertEqual(id, mockPeripheral.identifier)
       break
     }
     for await device in devices {
-      XCTAssertEqual(device.identifier, mockPeripheral2.identifier)
+      let id = await device.identifier
+      XCTAssertEqual(id, mockPeripheral2.identifier)
       break
     }
   }
@@ -78,7 +80,8 @@ final class ScanForNewDevicesTests: XCTestCase, XCTestObservation {
 
     // true while scanning
     for await device in try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service]) {
-      XCTAssertEqual(device.identifier, mockPeripheral.identifier)
+      let id = await device.identifier
+      XCTAssertEqual(id, mockPeripheral.identifier)
       try await assertAllScanning(true)
       break
     }

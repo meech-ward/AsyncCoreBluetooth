@@ -15,32 +15,33 @@ extension CentralManager {
     print("centralManager \(central) willRestoreState \(dict)")
   }
 
-  func centralManager(_ central: CBMCentralManager, didDiscover peripheral: CBMPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
-    print("centralManager \(central) didDiscover \(peripheral) advertisementData \(advertisementData) rssi \(RSSI)")
+  func centralManager(_ central: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+    print("centralManager \(central) didDiscover \(cbPeripheral) advertisementData \(advertisementData) rssi \(RSSI)")
     guard let scanForPeripheralsContinuation = scanForPeripheralsContinuation else {
       return
     }
-    scanForPeripheralsContinuation.yield(peripheral)
+    let p = Peripheral(cbPeripheral: cbPeripheral)
+    scanForPeripheralsContinuation.yield(p)
   }
 
-  func centralManager(_ central: CBMCentralManager, didConnect peripheral: CBMPeripheral) async {
-    print("centralManager \(central) didConnect \(peripheral)")
+  func centralManager(_ central: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
+    print("centralManager \(central) didConnect \(cbPeripheral)")
   }
 
-  func centralManager(_ central: CBMCentralManager, didFailToConnect peripheral: CBMPeripheral, error: Error?) async {
-    print("centralManager \(central) didFailToConnect \(peripheral) error \(String(describing: error))")
+  func centralManager(_ central: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) async {
+    print("centralManager \(central) didFailToConnect \(cbPeripheral) error \(String(describing: error))")
   }
 
-  func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral peripheral: CBMPeripheral, error: Error?) async {
-    print("centralManager \(central) didDisconnectPeripheral \(peripheral) error \(String(describing: error))")
+  func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral cbPeripheral: CBMPeripheral, error: Error?) async {
+    print("centralManager \(central) didDisconnectPeripheral \(cbPeripheral) error \(String(describing: error))")
   }
 
-  func centralManager(_ central: CBMCentralManager, connectionEventDidOccur event: CBMConnectionEvent, for peripheral: CBMPeripheral) async {
-    print("centralManager \(central) connectionEventDidOccur \(event) for \(peripheral)")
+  func centralManager(_ central: CBMCentralManager, connectionEventDidOccur event: CBMConnectionEvent, for cbPeripheral: CBMPeripheral) async {
+    print("centralManager \(central) connectionEventDidOccur \(event) for \(cbPeripheral)")
   }
 
-  func centralManager(_ central: CBMCentralManager, didUpdateANCSAuthorizationFor peripheral: CBMPeripheral) {
-    print("centralManager \(central) didUpdateANCSAuthorizationFor \(peripheral)")
+  func centralManager(_ central: CBMCentralManager, didUpdateANCSAuthorizationFor cbPeripheral: CBMPeripheral) {
+    print("centralManager \(central) didUpdateANCSAuthorizationFor \(cbPeripheral)")
   }
 }
 
@@ -60,33 +61,33 @@ class CentralManagerDelegate: NSObject, CBMCentralManagerDelegate {
     centralManager.delegate?.centralManager(central, willRestoreState: dict)
   }
 
-  func centralManager(_ central: CBMCentralManager, didDiscover peripheral: CBMPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
-    Task { await centralManager.centralManager(central, didDiscover: peripheral, advertisementData: advertisementData, rssi: RSSI) }
-    centralManager.delegate?.centralManager(central, didDiscover: peripheral, advertisementData: advertisementData, rssi: RSSI)
+  func centralManager(_ central: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+    Task { await centralManager.centralManager(central, didDiscover: cbPeripheral, advertisementData: advertisementData, rssi: RSSI) }
+    centralManager.delegate?.centralManager(central, didDiscover: cbPeripheral, advertisementData: advertisementData, rssi: RSSI)
   }
 
-  func centralManager(_ central: CBMCentralManager, didConnect peripheral: CBMPeripheral) {
-    Task { await centralManager.centralManager(central, didConnect: peripheral) }
-    centralManager.delegate?.centralManager(central, didConnect: peripheral)
+  func centralManager(_ central: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) {
+    Task { await centralManager.centralManager(central, didConnect: cbPeripheral) }
+    centralManager.delegate?.centralManager(central, didConnect: cbPeripheral)
   }
 
-  func centralManager(_ central: CBMCentralManager, didFailToConnect peripheral: CBMPeripheral, error: Error?) {
-    Task { await centralManager.centralManager(central, didFailToConnect: peripheral, error: error) }
-    centralManager.delegate?.centralManager(central, didFailToConnect: peripheral, error: error)
+  func centralManager(_ central: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) {
+    Task { await centralManager.centralManager(central, didFailToConnect: cbPeripheral, error: error) }
+    centralManager.delegate?.centralManager(central, didFailToConnect: cbPeripheral, error: error)
   }
 
-  func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral peripheral: CBMPeripheral, error: Error?) {
-    Task { await centralManager.centralManager(central, didDisconnectPeripheral: peripheral, error: error) }
-    centralManager.delegate?.centralManager(central, didDisconnectPeripheral: peripheral, error: error)
+  func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral cbPeripheral: CBMPeripheral, error: Error?) {
+    Task { await centralManager.centralManager(central, didDisconnectPeripheral: cbPeripheral, error: error) }
+    centralManager.delegate?.centralManager(central, didDisconnectPeripheral: cbPeripheral, error: error)
   }
 
-  func centralManager(_ central: CBMCentralManager, connectionEventDidOccur event: CBMConnectionEvent, for peripheral: CBMPeripheral) {
-    Task { await centralManager.centralManager(central, connectionEventDidOccur: event, for: peripheral) }
-    centralManager.delegate?.centralManager(central, connectionEventDidOccur: event, for: peripheral)
+  func centralManager(_ central: CBMCentralManager, connectionEventDidOccur event: CBMConnectionEvent, for cbPeripheral: CBMPeripheral) {
+    Task { await centralManager.centralManager(central, connectionEventDidOccur: event, for: cbPeripheral) }
+    centralManager.delegate?.centralManager(central, connectionEventDidOccur: event, for: cbPeripheral)
   }
 
-  func centralManager(_ central: CBMCentralManager, didUpdateANCSAuthorizationFor peripheral: CBMPeripheral) {
-    Task { await centralManager.centralManager(central, didUpdateANCSAuthorizationFor: peripheral) }
-    centralManager.delegate?.centralManager(central, didUpdateANCSAuthorizationFor: peripheral)
+  func centralManager(_ central: CBMCentralManager, didUpdateANCSAuthorizationFor cbPeripheral: CBMPeripheral) {
+    Task { await centralManager.centralManager(central, didUpdateANCSAuthorizationFor: cbPeripheral) }
+    centralManager.delegate?.centralManager(central, didUpdateANCSAuthorizationFor: cbPeripheral)
   }
 }

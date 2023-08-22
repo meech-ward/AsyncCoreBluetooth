@@ -1,11 +1,11 @@
 import CoreBluetoothMock
 import Foundation
 
-public enum CentralManagerError: Error {
-  case alreadyScanning
-}
-
 public actor CentralManager: ObservableObject {
+  public enum CentralManagerError: Error {
+    case alreadyScanning
+  }
+
   /// A flag to force mocking also on physical device. Useful for testing.
   private let forceMock: Bool
   /// An optional delegate for a more clasical implementationl. These will get sent straight from the CBMCentralManager delegate without going through the CentralManager actor. Avoid using this if you can.
@@ -17,10 +17,11 @@ public actor CentralManager: ObservableObject {
 
   private lazy var centralManagerDelegate: CentralManagerDelegate = .init(centralManager: self)
 
-  private(set) lazy var centralManager: CBMCentralManager = CBMCentralManagerFactory.instance(delegate: centralManagerDelegate,
-                                                                                              queue: queue,
-                                                                                              options: options,
-                                                                                              forceMock: forceMock)
+  /// The underlying CBMCentralManager instance.
+  public lazy var centralManager: CBMCentralManager = CBMCentralManagerFactory.instance(delegate: centralManagerDelegate,
+                                                                                        queue: queue,
+                                                                                        options: options,
+                                                                                        forceMock: forceMock)
 
   /// Initializes the central manager with optional parameters.
   ///
@@ -36,9 +37,9 @@ public actor CentralManager: ObservableObject {
     self.forceMock = forceMock
   }
 
-  // MARK: - ble states (CBMManagerState)
+  // MARK: - ble states (CentralManagerState)
 
-  @Published @MainActor public var bleState: CBMManagerState = .unknown
+  @Published @MainActor public var bleState: CentralManagerState = .unknown
 
   /// Starts the central manager and sets the BLE state.
   ///
@@ -50,17 +51,14 @@ public actor CentralManager: ObservableObject {
     }
   }
 
-  var stateContinuations: [UUID: AsyncStream<CBMManagerState>.Continuation] = [:]
+  var stateContinuations: [UUID: AsyncStream<CentralManagerState>.Continuation] = [:]
 
-  func addNewStateContinuation(id: UUID, continuation: AsyncStream<CBMManagerState>.Continuation) {
+  func setStateContinuation(id: UUID, continuation: AsyncStream<CentralManagerState>.Continuation?) {
     stateContinuations[id] = continuation
   }
 
-  func removeStateContinuation(id: UUID) {
-    stateContinuations[id] = nil
-  }
-
   /// Starts monitoring BLE state changes and returns an `AsyncStream`.
+  /// This method is safe to call multiple times in order to check the potentially changing state of the underlying `CBCentralManager`.
   ///
   /// This function returns an `AsyncStream` that can be used to monitor changes to the BLE state.
   /// Continuations are managed internally to track state changes.
@@ -71,26 +69,28 @@ public actor CentralManager: ObservableObject {
   ///   print("BLE state changed to: \(state)")
   /// }
   /// ```
-  public func start() -> AsyncStream<CBMManagerState> {
+  public func start() -> AsyncStream<CentralManagerState> {
     return AsyncStream { [weak self] continuation in
       guard let self = self else { return }
 
       let id = UUID()
       Task {
-        await self.addNewStateContinuation(id: id, continuation: continuation)
+        await self.setStateContinuation(id: id, continuation: continuation)
         await continuation.yield(self.centralManager.state)
       }
 
       continuation.onTermination = { @Sendable [weak self] _ in
         guard let self = self else { return }
         Task {
-          await self.removeStateContinuation(id: id)
+          await self.setStateContinuation(id: id, continuation: nil)
         }
       }
     }
   }
 
-  // MARK: - Scanning or Stopping Scans of Peripherals https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667498
+  // MARK: - Scanning or Stopping Scans of Peripherals
+
+  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667498
 
   @Published @MainActor public private(set) var isScanning = false
   private(set) var internalIsScanning = false {
@@ -103,8 +103,8 @@ public actor CentralManager: ObservableObject {
     }
   }
 
-  var scanForPeripheralsContinuation: AsyncStream<CBMPeripheral>.Continuation?
-  func setScanForPeripheralsContinuation(_ scanForPeripheralsContinuation: AsyncStream<CBMPeripheral>.Continuation?) {
+  var scanForPeripheralsContinuation: AsyncStream<Peripheral>.Continuation?
+  func setScanForPeripheralsContinuation(_ scanForPeripheralsContinuation: AsyncStream<Peripheral>.Continuation?) {
     self.scanForPeripheralsContinuation = scanForPeripheralsContinuation
   }
 
@@ -118,7 +118,7 @@ public actor CentralManager: ObservableObject {
   /// ```
   ///
   /// see https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518986-scanforperipherals
-  public func scanForPeripherals(withServices services: [CBMUUID]?, options _: [String: Any]? = nil) throws -> AsyncStream<CBMPeripheral> {
+  public func scanForPeripherals(withServices services: [CBMUUID]?, options _: [String: Any]? = nil) throws -> AsyncStream<Peripheral> {
     guard !internalIsScanning else {
       print("Already scanning, stop the scanning task before scanning again")
       throw CentralManagerError.alreadyScanning
@@ -155,7 +155,7 @@ public actor CentralManager: ObservableObject {
   /// ```
   ///
   /// see https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518986-scanforperipherals
-  public func scanForPeripherals(withServices services: [UUID], options: [String: Any]? = nil) throws -> AsyncStream<CBMPeripheral> {
+  public func scanForPeripherals(withServices services: [UUID], options: [String: Any]? = nil) throws -> AsyncStream<Peripheral> {
     return try scanForPeripherals(withServices: services.map { CBMUUID(nsuuid: $0) }, options: options)
   }
 
@@ -167,4 +167,5 @@ public actor CentralManager: ObservableObject {
     setScanForPeripheralsContinuation(nil)
     internalIsScanning = false
   }
+
 }
