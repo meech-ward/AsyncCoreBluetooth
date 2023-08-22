@@ -265,7 +265,7 @@ extension ConnectToNewDeviceTests {
 
 // UnSuccesfull connected state
 extension ConnectToNewDeviceTests {
-  func assetConnectionStateIsConnectionFailed(_ connectionState: Peripheral.ConnectionState) {
+  func assertConnectionStateIsConnectionFailed(_ connectionState: Peripheral.ConnectionState) {
     if case let .failedToConnect(err) = connectionState {
       XCTAssertEqual(err.code, CBMError.connectionFailed)
     } else {
@@ -292,11 +292,11 @@ extension ConnectToNewDeviceTests {
         continue
       }
       // stream state
-      assetConnectionStateIsConnectionFailed(connectionState)
+      assertConnectionStateIsConnectionFailed(connectionState)
 
       // device connection state property
       let deviceConnectionState = await device.connectionState
-      assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      assertConnectionStateIsConnectionFailed(deviceConnectionState)
       break
     }
   }
@@ -312,11 +312,11 @@ extension ConnectToNewDeviceTests {
 
     for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
       // stream state
-      assetConnectionStateIsConnectionFailed(connectionState)
+      assertConnectionStateIsConnectionFailed(connectionState)
 
       // device connection state property
       let deviceConnectionState = await device.connectionState
-      assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      assertConnectionStateIsConnectionFailed(deviceConnectionState)
       break
     }
   }
@@ -332,11 +332,11 @@ extension ConnectToNewDeviceTests {
 
     for await connectionState in connectionStates.dropFirst() {
       // stream state
-      assetConnectionStateIsConnectionFailed(connectionState)
+      assertConnectionStateIsConnectionFailed(connectionState)
 
       // device connection state property
       let deviceConnectionState = await device.connectionState
-      assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      assertConnectionStateIsConnectionFailed(deviceConnectionState)
       break
     }
   }
@@ -352,11 +352,11 @@ extension ConnectToNewDeviceTests {
 
     for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
       // stream state
-      assetConnectionStateIsConnectionFailed(connectionState)
+      assertConnectionStateIsConnectionFailed(connectionState)
 
       // device connection state property
       let deviceConnectionState = await device.connectionState
-      assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      assertConnectionStateIsConnectionFailed(deviceConnectionState)
       break
     }
 
@@ -384,7 +384,7 @@ extension ConnectToNewDeviceTests {
 
     @Sendable func assertConnectionStates(stream: AsyncDropFirstSequence<AsyncStream<Peripheral.ConnectionState>>) async {
       for await connectionState in stream {
-        assetConnectionStateIsConnectionFailed(connectionState)
+        assertConnectionStateIsConnectionFailed(connectionState)
         break
       }
     }
