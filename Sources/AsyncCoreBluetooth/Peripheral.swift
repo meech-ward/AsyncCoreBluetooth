@@ -3,7 +3,7 @@ import CoreBluetoothMock
 import Foundation
 
 public actor Peripheral: ObservableObject {
-  public enum ConnectionState {
+  public enum ConnectionState: Equatable {
     case disconnected(CBError?)
     case connecting
     case connected
@@ -26,7 +26,11 @@ public actor Peripheral: ObservableObject {
     self.cbPeripheral = cbPeripheral
   }
 
-
+  func setConnectionState(_ state: ConnectionState) async {
+    await MainActor.run {
+      connectionState = state
+    }
+  }
 
   // var state: PeripheralState {
   //   peripheral.state

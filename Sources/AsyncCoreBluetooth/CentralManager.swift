@@ -168,4 +168,107 @@ public actor CentralManager: ObservableObject {
     internalIsScanning = false
   }
 
+  // MARK: - Establishing or Canceling Connections with Peripherals
+
+  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667358
+
+  //  var connectDevices: [UUID: PeripheralConnectionDelegate] = [:]
+
+  typealias PeripheralConnectionContinuation = (peripheralUUID: UUID, continuation: AsyncStream<Peripheral.ConnectionState>.Continuation)
+  var peripheralConnectionContinuations: [UUID: PeripheralConnectionContinuation] = [:]
+
+  func setPeripheralConnectionContinuation(id: UUID, continuation: PeripheralConnectionContinuation?) {
+    peripheralConnectionContinuations[id] = continuation
+  }
+
+  func getPeripheralConnectionContinuations(peripheralUUID: UUID) -> [PeripheralConnectionContinuation] {
+    return peripheralConnectionContinuations.values.filter { $0.peripheralUUID == peripheralUUID }
+  }
+
+  public enum PeripheralConnectionError: Error {
+    case alreadyConnecting
+  }
+
+  /// Establishes a local connection to a peripheral.
+  /// Canceling the task will NOT disconnect the peripheral. You must call `cancelPeripheralConnection(_:)` to disconnect. This allows you to keep "watching" for changed to device state even after a connection or disconnection.
+  ///
+  // return an async stream or don't, two optoins
+  @discardableResult public func connect(_ peripheral: Peripheral, options: [String: Any]? = nil) async -> AsyncStream<Peripheral.ConnectionState> {
+        // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
+    // let connectionState = await peripheral.connectionState
+
+    await peripheral.setConnectionState(.connecting)
+    let peripheralConnectionContinuations = await getPeripheralConnectionContinuations(peripheralUUID: peripheral.identifier)
+    peripheralConnectionContinuations.forEach { $0.continuation.yield(.connecting) }
+
+    let stream = await connectionState(forPeripheral: peripheral)
+    let cbPeripheral = await peripheral.cbPeripheral
+
+    centralManager.connect(cbPeripheral, options: options)
+    
+    return stream
+  }
+
+  public func connectionState(forPeripheral peripheral: Peripheral) async -> AsyncStream<Peripheral.ConnectionState> {
+    let connectionState = await peripheral.connectionState
+    let stream = AsyncStream { [weak self] continuation in
+      guard let self = self else {
+        return
+      }
+
+      let id = UUID()
+      Task {
+        await self.setPeripheralConnectionContinuation(id: id, continuation: (peripheral.identifier, continuation))
+        // Do this twice after asynchronously adding it to the dictionary
+        // That way we can await dropping the first value to know when this is ready
+        await peripheral.setConnectionState(connectionState)
+        continuation.yield(connectionState)
+        continuation.yield(connectionState)
+      }
+
+      continuation.onTermination = { @Sendable [weak self] _ in
+        guard let self = self else {
+          return
+        }
+        Task {
+          await self.setPeripheralConnectionContinuation(id: id, continuation: nil)
+        }
+      }
+    }
+    for await _ in stream { break }
+    return stream
+  }
+
+  // return an async stream or don't, two optoins
+  // same stream as connection
+  func cancelPeripheralConnection(_ peripheral: Peripheral) async {
+    let cbPeripheral = await peripheral.cbPeripheral
+    centralManager.cancelPeripheralConnection(cbPeripheral)
+  }
+
+  // Todo
+
+  // MARK: - Retrieving Lists of Peripherals
+
+  func retrieveConnectedPeripherals(withServices _: [CBMUUID]) -> [Peripheral] {
+    return []
+  }
+
+  func retrievePeripherals(withIdentifiers _: [UUID]) -> [Peripheral] {
+    return []
+  }
+
+  // MARK: - Inspecting Feature Support
+
+  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#3222461
+  #if !os(macOS)
+    static func supports(_ features: CBMCentralManager.Feature) -> Bool {
+      return CBMCentralManager.supports(features)
+    }
+  #endif
+
+  // MARK: - Receiving Connection Events
+
+  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#3222461
+  func registerForConnectionEvents(options _: [CBMConnectionEventMatchingOption: Any]? = nil) {}
 }
