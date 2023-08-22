@@ -15,8 +15,8 @@ extension CentralManager {
     print("centralManager \(central) willRestoreState \(dict)")
   }
 
-  func centralManager(_ central: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
-    print("centralManager \(central) didDiscover \(cbPeripheral) advertisementData \(advertisementData) rssi \(RSSI)")
+  func centralManager(_: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData _: [String: Any], rssi _: NSNumber) {
+    // print("centralManager \(central) didDiscover \(cbPeripheral) advertisementData \(advertisementData) rssi \(RSSI)")
     guard let scanForPeripheralsContinuation = scanForPeripheralsContinuation else {
       return
     }
@@ -24,8 +24,13 @@ extension CentralManager {
     scanForPeripheralsContinuation.yield(p)
   }
 
-  func centralManager(_ central: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
-    print("centralManager \(central) didConnect \(cbPeripheral)")
+  func centralManager(_: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
+    // print("centralManager \(central) didConnect \(cbPeripheral)")
+    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: cbPeripheral.identifier)
+    for peripheralConnectionContinuation in peripheralConnectionContinuations {
+      await peripheralConnectionContinuation.peripheral.setConnectionState(.connected)
+      peripheralConnectionContinuation.continuation.yield(.connected)
+    }
   }
 
   func centralManager(_ central: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) async {

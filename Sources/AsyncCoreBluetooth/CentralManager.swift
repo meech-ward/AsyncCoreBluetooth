@@ -174,7 +174,7 @@ public actor CentralManager: ObservableObject {
 
   //  var connectDevices: [UUID: PeripheralConnectionDelegate] = [:]
 
-  typealias PeripheralConnectionContinuation = (peripheralUUID: UUID, continuation: AsyncStream<Peripheral.ConnectionState>.Continuation)
+  typealias PeripheralConnectionContinuation = (peripheralUUID: UUID, continuation: AsyncStream<Peripheral.ConnectionState>.Continuation, peripheral: Peripheral)
   var peripheralConnectionContinuations: [UUID: PeripheralConnectionContinuation] = [:]
 
   func setPeripheralConnectionContinuation(id: UUID, continuation: PeripheralConnectionContinuation?) {
@@ -205,7 +205,7 @@ public actor CentralManager: ObservableObject {
     let cbPeripheral = await peripheral.cbPeripheral
 
     centralManager.connect(cbPeripheral, options: options)
-    
+
     return stream
   }
 
@@ -218,7 +218,7 @@ public actor CentralManager: ObservableObject {
 
       let id = UUID()
       Task {
-        await self.setPeripheralConnectionContinuation(id: id, continuation: (peripheral.identifier, continuation))
+        await self.setPeripheralConnectionContinuation(id: id, continuation: (peripheral.identifier, continuation, peripheral))
         // Do this twice after asynchronously adding it to the dictionary
         // That way we can await dropping the first value to know when this is ready
         await peripheral.setConnectionState(connectionState)
