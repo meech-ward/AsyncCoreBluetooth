@@ -187,15 +187,22 @@ public actor CentralManager: ObservableObject {
 
   public enum PeripheralConnectionError: Error {
     case alreadyConnecting
+    case alreadyConnected
   }
 
   /// Establishes a local connection to a peripheral.
   /// Canceling the task will NOT disconnect the peripheral. You must call `cancelPeripheralConnection(_:)` to disconnect. This allows you to keep "watching" for changed to device state even after a connection or disconnection.
   ///
   // return an async stream or don't, two optoins
-  @discardableResult public func connect(_ peripheral: Peripheral, options: [String: Any]? = nil) async -> AsyncStream<Peripheral.ConnectionState> {
-        // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
-    // let connectionState = await peripheral.connectionState
+  @discardableResult public func connect(_ peripheral: Peripheral, options: [String: Any]? = nil) async throws -> AsyncStream<Peripheral.ConnectionState> {
+    // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
+    let currentConnectionState = await peripheral.connectionState
+    guard currentConnectionState != .connected else {
+      throw PeripheralConnectionError.alreadyConnected
+    }
+    guard currentConnectionState != .connecting else {
+      throw PeripheralConnectionError.alreadyConnecting
+    }
 
     await peripheral.setConnectionState(.connecting)
     let peripheralConnectionContinuations = await getPeripheralConnectionContinuations(peripheralUUID: peripheral.identifier)

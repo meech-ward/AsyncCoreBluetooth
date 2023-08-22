@@ -5,8 +5,8 @@ import XCTest
 final class ScanForNewDevicesTests: XCTestCase, XCTestObservation {
   var centralManager: CentralManager!
 
-  lazy var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.SuccessConnectionDelegate())
-  lazy var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.SuccessConnectionDelegate())
+  lazy var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate())
+  lazy var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate())
 
   override func setUp() async throws {
     CBMCentralManagerMock.simulateInitialState(.poweredOff)

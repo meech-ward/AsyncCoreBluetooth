@@ -12,15 +12,13 @@ class MockPeripheral {
 
   static let deviceService = CBMServiceMock(type: CBMUUID(nsuuid: UUIDs.Device.service), primary: true)
 
-  class SuccessConnectionDelegate: CBMPeripheralSpecDelegate {
-    func peripheralDidReceiveConnectionRequest(_: CBMPeripheralSpec) -> Result<Void, Error> {
-      return .success(())
+  class Delegate: CBMPeripheralSpecDelegate {
+    var peripheralDidReceiveConnectionRequestResult: Result<Void, Error>
+    init( peripheralDidReceiveConnectionRequestResult: Result<Void, Error> = .success(())) {
+      self.peripheralDidReceiveConnectionRequestResult = peripheralDidReceiveConnectionRequestResult
     }
-  }
-
-  class FailureConnectionDelegate: CBMPeripheralSpecDelegate {
     func peripheralDidReceiveConnectionRequest(_: CBMPeripheralSpec) -> Result<Void, Error> {
-      return .failure(CBMError(.connectionFailed))
+      return peripheralDidReceiveConnectionRequestResult
     }
   }
 

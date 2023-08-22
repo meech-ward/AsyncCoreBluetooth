@@ -5,10 +5,16 @@ import XCTest
 final class ConnectToNewDeviceTests: XCTestCase, XCTestObservation {
   var centralManager: CentralManager!
 
-  lazy var mockPeripheralSuccess: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.SuccessConnectionDelegate())
-  lazy var mockPeripheralFailure: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.FailureConnectionDelegate())
+  var mockPeripheralSuccess: CBMPeripheralSpec!
+  var mockPeripheralFailure: CBMPeripheralSpec!
+  var mockPeripheralSuccessDelegate: MockPeripheral.Delegate!
+  var mockPeripheralFailureDelegate: MockPeripheral.Delegate!
 
   override func setUp() async throws {
+    mockPeripheralSuccessDelegate = MockPeripheral.Delegate(peripheralDidReceiveConnectionRequestResult: .success(()))
+    mockPeripheralFailureDelegate = MockPeripheral.Delegate(peripheralDidReceiveConnectionRequestResult: .failure(CBMError(.connectionFailed)))
+    mockPeripheralSuccess = MockPeripheral.makeDevice(delegate: mockPeripheralSuccessDelegate)
+    mockPeripheralFailure = MockPeripheral.makeDevice(delegate: mockPeripheralFailureDelegate)
     CBMCentralManagerMock.simulateInitialState(.poweredOff)
     CBMCentralManagerMock.simulatePeripherals([mockPeripheralSuccess, mockPeripheralFailure])
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
@@ -56,7 +62,7 @@ extension ConnectToNewDeviceTests {
     var i = 0
     for await connectionState in await centralManager.connectionState(forPeripheral: device) {
       if i == 0 {
-        await centralManager.connect(device)
+        try await centralManager.connect(device)
         i += 1
         continue
       }
@@ -88,7 +94,7 @@ extension ConnectToNewDeviceTests {
       break
     }
 
-    await centralManager.connect(device)
+    try await centralManager.connect(device)
 
     for await connectionState in await centralManager.connectionState(forPeripheral: device) {
       // stream state
@@ -108,7 +114,7 @@ extension ConnectToNewDeviceTests {
       return
     }
 
-    let connectionStates = await centralManager.connect(device)
+    let connectionStates = try await centralManager.connect(device)
 
     for await connectionState in connectionStates {
       // stream state
@@ -144,7 +150,7 @@ extension ConnectToNewDeviceTests {
     let stream1 = await centralManager.connectionState(forPeripheral: device)
     let stream2 = await centralManager.connectionState(forPeripheral: device)
     let stream3 = await centralManager.connectionState(forPeripheral: device)
-    let connectionStates = await centralManager.connect(device)
+    let connectionStates = try await centralManager.connect(device)
     await withTaskGroup(of: Void.self) { taskGroup in
       taskGroup.addTask { await assertConnectionStates(stream: stream1) }
       taskGroup.addTask { await assertConnectionStates(stream: stream2) }
@@ -172,7 +178,7 @@ extension ConnectToNewDeviceTests {
     var i = 0
     for await connectionState in await centralManager.connectionState(forPeripheral: device) {
       if i == 0 {
-        await centralManager.connect(device)
+        try await centralManager.connect(device)
         i += 1
         continue
       }
@@ -197,7 +203,7 @@ extension ConnectToNewDeviceTests {
       return
     }
 
-    await centralManager.connect(device)
+    try await centralManager.connect(device)
 
     for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
       // stream state
@@ -217,7 +223,7 @@ extension ConnectToNewDeviceTests {
       return
     }
 
-    let connectionStates = await centralManager.connect(device)
+    let connectionStates = try await centralManager.connect(device)
 
     for await connectionState in connectionStates.dropFirst() {
       // stream state
@@ -247,7 +253,7 @@ extension ConnectToNewDeviceTests {
     let stream1 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
     let stream2 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
     let stream3 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
-    let connectionStates = await centralManager.connect(device).dropFirst()
+    let connectionStates = try await centralManager.connect(device).dropFirst()
     await withTaskGroup(of: Void.self) { taskGroup in
       taskGroup.addTask { await assertConnectionStates(stream: stream1) }
       taskGroup.addTask { await assertConnectionStates(stream: stream2) }
@@ -277,7 +283,7 @@ extension ConnectToNewDeviceTests {
     var i = 0
     for await connectionState in await centralManager.connectionState(forPeripheral: device) {
       if i == 0 {
-        await centralManager.connect(device)
+        try await centralManager.connect(device)
         i += 1
         continue
       }
@@ -302,7 +308,7 @@ extension ConnectToNewDeviceTests {
       return
     }
 
-    await centralManager.connect(device)
+    try await centralManager.connect(device)
 
     for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
       // stream state
@@ -322,7 +328,7 @@ extension ConnectToNewDeviceTests {
       return
     }
 
-    let connectionStates = await centralManager.connect(device)
+    let connectionStates = try await centralManager.connect(device)
 
     for await connectionState in connectionStates.dropFirst() {
       // stream state
@@ -331,6 +337,40 @@ extension ConnectToNewDeviceTests {
       // device connection state property
       let deviceConnectionState = await device.connectionState
       assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      break
+    }
+  }
+
+  func test_unsuccessfulConnection_canSuccesfullyConnectAfter() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+    guard let device = await devices.first(where: { await $0.identifier == mockPeripheralFailure.identifier }) else {
+      XCTFail("couldn't get device")
+      return
+    }
+
+    try await centralManager.connect(device)
+
+    for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
+      // stream state
+      assetConnectionStateIsConnectionFailed(connectionState)
+
+      // device connection state property
+      let deviceConnectionState = await device.connectionState
+      assetConnectionStateIsConnectionFailed(deviceConnectionState)
+      break
+    }
+
+    mockPeripheralFailureDelegate.peripheralDidReceiveConnectionRequestResult = .success(())
+
+    try await centralManager.connect(device)
+
+    for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
+      // stream state
+      XCTAssertEqual(connectionState, .connected, "Expected connectionState to be connected, got \(connectionState)")
+
+      // device connection state property
+      let deviceConnectionState = await device.connectionState
+      XCTAssertEqual(deviceConnectionState, .connected, "Expected deviceConnectionState to be connected, got \(deviceConnectionState)")
       break
     }
   }
@@ -351,7 +391,7 @@ extension ConnectToNewDeviceTests {
     let stream1 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
     let stream2 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
     let stream3 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
-    let connectionStates = await centralManager.connect(device).dropFirst()
+    let connectionStates = try await centralManager.connect(device).dropFirst()
     await withTaskGroup(of: Void.self) { taskGroup in
       taskGroup.addTask { await assertConnectionStates(stream: stream1) }
       taskGroup.addTask { await assertConnectionStates(stream: stream2) }
@@ -361,71 +401,55 @@ extension ConnectToNewDeviceTests {
   }
 }
 
-// func test_connect_success_updatesDeviceState() async throws {
-//   let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
-//   guard let device = await devices.first(where: { $0.identifier == mockPeripheralSuccess.identifier }) else {
-//     XCTFail("couldn't get device")
-//     return
-//   }
+// Already connecting or connected
+extension ConnectToNewDeviceTests {
+  func test_connect_throws_whenCalledWhileConnecting() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+    guard let device = await devices.first(where: { await $0.identifier == mockPeripheralSuccess.identifier }) else {
+      XCTFail("couldn't get device")
+      return
+    }
 
-//   let connectionStates = try await device.connect()
-//   // very first time will be connecting
+    try await centralManager.connect(device)
 
-//   for await connectionState in connectionStates {
-//     XCTAssertEqual(connectionState, .connecting)
+    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+      XCTAssertEqual(connectionState, .connecting, "Expected connectionState to be connecting, got \(connectionState)")
 
-//     // Published connection state property
-//     let deviceConnectionState = await device.connectionState
-//     XCTAssertEqual(deviceConnectionState, .connecting)
-//     break
-//   }
-//   // then will connect
-//   for await connectionState in connectionStates {
-//     XCTAssertEqual(connectionState, .connected)
+      do {
+        try await centralManager.connect(device)
+        XCTFail("Didn't throw error")
+      } catch {
+        XCTAssertNotNil(error)
+      }
 
-//     // Published connection state property
-//     let deviceConnectionState = await device.connectionState
-//     XCTAssertEqual(deviceConnectionState, .connected)
-//     break
-//   }
-// }
+      break
+    }
+  }
 
-// func test_connect_failure_updatesDeviceState() async throws {
-//   let devices = try await centralManager.scanForPeripherals(withServices: [UUIDs.Device.service])
-//   guard let device = await devices.first(where: { $0.identifier == mockPeripheral2.identifier }) else {
-//     XCTFail("couldn't get device")
-//     return
-//   }
+  func test_connect_throws_whenCalledWhileConnected() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+    guard let device = await devices.first(where: { await $0.identifier == mockPeripheralSuccess.identifier }) else {
+      XCTFail("couldn't get device")
+      return
+    }
 
-//   let connectionStates = try await device.connect()
-//   // very first time will be not connected
-//   for await connectionState in connectionStates {
-//     XCTAssertEqual(connectionState, .connecting)
+    try await centralManager.connect(device)
 
-//     // Published connection state property
-//     let deviceConnectionState = await device.connectionState
-//     XCTAssertEqual(deviceConnectionState, .connecting)
-//     break
-//   }
+    for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
+      // stream state
+      XCTAssertEqual(connectionState, .connected, "Expected connectionState to be connected, got \(connectionState)")
 
-//   // then will fail to connect
-//   for await connectionState in connectionStates {
-//     if case let .failedToConnect(err) = connectionState {
-//       XCTAssertEqual(err.code, CBMError.connectionFailed)
-//     } else {
-//       XCTFail("Unexpected connection state expected \(connectionState) to be connectionFailed")
-//     }
+      do {
+        try await centralManager.connect(device)
+        XCTFail("Didn't throw error")
+      } catch {
+        XCTAssertNotNil(error)
+      }
 
-//     // Published connection state property
-//     let deviceConnectionState = await device.connectionState
-//     if case let .failedToConnect(err) = deviceConnectionState {
-//       XCTAssertEqual(err.code, CBMError.connectionFailed)
-//     } else {
-//       XCTFail("Unexpected connection state expected \(deviceConnectionState) to be connectionFailed")
-//     }
-//     break
-//   }
-// }
+      break
+    }
+  }
+}
 
 // func test_deviceDisconnected_updatesDeviceState() async throws {
 //   let devices = try await centralManager.scanForPeripherals(withServices: [UUIDs.Device.service])

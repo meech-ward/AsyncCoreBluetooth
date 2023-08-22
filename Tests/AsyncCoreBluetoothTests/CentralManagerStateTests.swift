@@ -5,7 +5,7 @@ import XCTest
 final class CentralManagerStateTests: XCTestCase, XCTestObservation {
   override static func setUp() {
     super.setUp()
-    let peripheral = MockPeripheral.makeDevice(delegate: MockPeripheral.SuccessConnectionDelegate())
+    let peripheral = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate())
     CBMCentralManagerMock.simulatePeripherals([peripheral])
   }
 
