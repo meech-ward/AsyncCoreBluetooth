@@ -4,6 +4,7 @@ import Foundation
 public actor CentralManager: ObservableObject {
   public enum CentralManagerError: Error {
     case alreadyScanning
+    case notPoweredOn
   }
 
   /// A flag to force mocking also on physical device. Useful for testing.
@@ -119,8 +120,10 @@ public actor CentralManager: ObservableObject {
   ///
   /// see https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518986-scanforperipherals
   public func scanForPeripherals(withServices services: [CBMUUID]?, options _: [String: Any]? = nil) throws -> AsyncStream<Peripheral> {
+    guard centralManager.state == .poweredOn else {
+      throw CentralManagerError.notPoweredOn
+    }
     guard !internalIsScanning else {
-      print("Already scanning, stop the scanning task before scanning again")
       throw CentralManagerError.alreadyScanning
     }
     internalIsScanning = true

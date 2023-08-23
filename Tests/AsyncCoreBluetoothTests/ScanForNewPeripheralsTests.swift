@@ -58,6 +58,17 @@ final class ScanForNewDevicesTests: XCTestCase, XCTestObservation {
     }
   }
 
+  func test_scan_throwsWhenDeviceNotPoweredOn() async throws {
+    CBMCentralManagerMock.simulateInitialState(.poweredOff)
+    do {
+      _ = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+      XCTFail("Didn't throw")
+    } catch {
+      print(error)
+      XCTAssertNotNil(error)
+    }
+  }
+
   func test_scan_endsScanWhenTaskIsCanceled() async throws {
     func assertAllScanning(_ expectedState: Bool = false) async throws {
       try await Task.sleep(nanoseconds: 1)
