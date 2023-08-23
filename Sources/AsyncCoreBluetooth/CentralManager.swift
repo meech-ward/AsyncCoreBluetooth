@@ -172,8 +172,6 @@ public actor CentralManager: ObservableObject {
 
   // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667358
 
-  //  var connectDevices: [UUID: PeripheralConnectionDelegate] = [:]
-
   typealias PeripheralConnectionContinuation = (peripheralUUID: UUID, continuation: AsyncStream<Peripheral.ConnectionState>.Continuation, peripheral: Peripheral)
   var peripheralConnectionContinuations: [UUID: PeripheralConnectionContinuation] = [:]
 
@@ -202,9 +200,10 @@ public actor CentralManager: ObservableObject {
   }
 
   /// Establishes a local connection to a peripheral.
-  /// Canceling the task will NOT disconnect the peripheral. You must call `cancelPeripheralConnection(_:)` to disconnect. This allows you to keep "watching" for changed to device state even after a connection or disconnection.
+  /// Canceling the task will NOT disconnect the peripheral. You must call `cancelPeripheralConnection(_:)` to disconnect. 
+  /// This allows you to keep "watching" for changed to device state even after a connection or disconnection.
   ///
-  // return an async stream or don't, two optoins
+  /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518766-connect
   @discardableResult public func connect(_ peripheral: Peripheral, options: [String: Any]? = nil) async throws -> AsyncStream<Peripheral.ConnectionState> {
     // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
     let currentConnectionState = await peripheral.connectionState
@@ -227,6 +226,9 @@ public actor CentralManager: ObservableObject {
     return stream
   }
 
+  /// Get an async stream representing a peripheral's connection state.
+  /// This is the same stream that you can get from `connect(_:)` and `cancelPeripheralConnection(_:)`.
+  /// The connection state will be the same as peripheral.connectionState. 
   public func connectionState(forPeripheral peripheral: Peripheral) async -> AsyncStream<Peripheral.ConnectionState> {
     let connectionState = await peripheral.connectionState
     let stream = AsyncStream { [weak self] continuation in
@@ -257,8 +259,9 @@ public actor CentralManager: ObservableObject {
     return stream
   }
 
-  // return an async stream or don't, two optoins
-  // same stream as connection
+  /// Cancels an active or pending local connection to a peripheral.
+  /// 
+  /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518952-cancelperipheralconnection
   @discardableResult public func cancelPeripheralConnection(_ peripheral: Peripheral) async throws -> AsyncStream<Peripheral.ConnectionState> {
     // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
     let currentConnectionState = await peripheral.connectionState

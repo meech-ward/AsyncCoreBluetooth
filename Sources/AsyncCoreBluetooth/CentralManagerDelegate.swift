@@ -39,7 +39,7 @@ extension CentralManager {
   }
 
   func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral cbPeripheral: CBMPeripheral, error: Error?) async {
-    print("centralManager \(central) didDisconnectPeripheral \(cbPeripheral) error \(String(describing: error))")
+    // print("centralManager \(central) didDisconnectPeripheral \(cbPeripheral) error \(String(describing: error))")
     let error = error as? CBMError
     let state: Peripheral.ConnectionState = .disconnected(error)
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
