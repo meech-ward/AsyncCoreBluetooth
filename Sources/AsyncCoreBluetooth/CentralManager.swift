@@ -176,7 +176,7 @@ public actor CentralManager: ObservableObject {
 
   // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667358
 
-  typealias PeripheralConnectionContinuation = (peripheralUUID: UUID, continuation: AsyncStream<Peripheral.ConnectionState>.Continuation, peripheral: Peripheral)
+  typealias PeripheralConnectionContinuation = (peripheralUUID: UUID, continuation: AsyncStream<Peripheral.ConnectionState>.Continuation)
   var peripheralConnectionContinuations: [UUID: PeripheralConnectionContinuation] = [:]
 
   func setPeripheralConnectionContinuation(id: UUID, continuation: PeripheralConnectionContinuation?) {
@@ -189,7 +189,8 @@ public actor CentralManager: ObservableObject {
 
   func updatePeripheralConnectionState(peripheralUUID: UUID, state: Peripheral.ConnectionState) async {
     let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: peripheralUUID)
-    await peripheralConnectionContinuations.first?.peripheral.setConnectionState(state)
+    // await peripheralConnectionContinuations.first?.peripheral.setConnectionState(state)
+    await Peripheral.getPeripheral(peripheralUUID: peripheralUUID)?.setConnectionState(state)
     for peripheralConnectionContinuation in peripheralConnectionContinuations {
       peripheralConnectionContinuation.continuation.yield(state)
     }
@@ -242,7 +243,7 @@ public actor CentralManager: ObservableObject {
 
       let id = UUID()
       Task {
-        await self.setPeripheralConnectionContinuation(id: id, continuation: (peripheral.identifier, continuation, peripheral))
+        await self.setPeripheralConnectionContinuation(id: id, continuation: (peripheral.identifier, continuation))
         // Do this twice after asynchronously adding it to the dictionary
         // That way we can await dropping the first value to know when this is ready
         await peripheral.setConnectionState(connectionState)
@@ -295,6 +296,25 @@ public actor CentralManager: ObservableObject {
 
   // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1519127-retrieveperipherals
 
+  var retreivedPeripherals: [UUID: Peripheral] = [:]
+  /// Returns a list of known peripherals by their identifiers.
+  public func retrieveConnectedPeripherals(withServices services: [CBMUUID]) async -> [Peripheral] {
+    let cbPeripherals = centralManager.retrieveConnectedPeripherals(withServices: services)
+    var peripherals = [Peripheral]()
+    for cbPeripheral in cbPeripherals {
+      peripherals.append(await Peripheral.getOrCreatePeripheral(cbPeripheral: cbPeripheral))
+    }
+    return peripherals
+  }
+
+  public func retrievePeripherals(withIdentifiers identifiers: [UUID]) async -> [Peripheral] {
+    let cbPeripherals = centralManager.retrievePeripherals(withIdentifiers: identifiers)
+    var peripherals = [Peripheral]()
+    for cbPeripheral in cbPeripherals {
+      peripherals.append(await Peripheral.getOrCreatePeripheral(cbPeripheral: cbPeripheral))
+    }
+    return peripherals
+  }
 
   // MARK: - Inspecting Feature Support
 

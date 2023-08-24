@@ -3,7 +3,6 @@ import CoreBluetoothMock
 import Foundation
 
 public actor Peripheral: ObservableObject {
-
   /// * Defaults to disconnected(nil)
   /// * Calling connect() on the central manager will cause the connectionState to change to connecting
   /// * After conencting, the device will change to connected or failedToConnect
@@ -20,13 +19,34 @@ public actor Peripheral: ObservableObject {
 
   public private(set) var cbPeripheral: CBMPeripheral
 
-  @MainActor public let identifier: UUID 
+  @MainActor public let identifier: UUID
   @MainActor @Published public internal(set) var connectionState: ConnectionState = .disconnected(nil)
   @MainActor @Published public private(set) var name: String?
 
   var delegate: CBMPeripheralDelegate?
 
-  @MainActor init(cbPeripheral: CBMPeripheral) {
+  // A cache of peripherals to avoid creating new ones every time
+  @MainActor private(set) static var storedPeripherals: [UUID: Peripheral] = [:]
+
+  @MainActor static func getOrCreatePeripheral(cbPeripheral: CBMPeripheral) -> Peripheral {
+    if let peripheral = storedPeripherals[cbPeripheral.identifier] {
+      return peripheral
+    } else {
+      let peripheral = Peripheral(cbPeripheral: cbPeripheral)
+      storedPeripherals[cbPeripheral.identifier] = peripheral
+      return peripheral
+    }
+  }
+
+  @MainActor static func getPeripheral(cbPeripheral: CBMPeripheral) -> Peripheral? {
+    storedPeripherals[cbPeripheral.identifier]
+  }
+
+  @MainActor static func getPeripheral(peripheralUUID: UUID) -> Peripheral? {
+    storedPeripherals[peripheralUUID]
+  }
+
+  @MainActor private init(cbPeripheral: CBMPeripheral) {
     self.cbPeripheral = cbPeripheral
     identifier = cbPeripheral.identifier
     name = cbPeripheral.name
@@ -45,11 +65,11 @@ public actor Peripheral: ObservableObject {
   var services: [CBMService]?
 }
 
-//extension Peripheral: Identifiable {
+// extension Peripheral: Identifiable {
 //  public static func == (lhs: Peripheral, rhs: Peripheral) -> Bool {
 //    lhs.identifier == rhs.identifier
 //  }
-//}
+// }
 
 extension Peripheral: Identifiable, Equatable {
   public static func == (lhs: Peripheral, rhs: Peripheral) -> Bool {

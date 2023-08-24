@@ -1,5 +1,5 @@
-import CoreBluetoothMock
 import CoreBluetooth
+import CoreBluetoothMock
 import Foundation
 
 class MockPeripheral {
@@ -15,16 +15,17 @@ class MockPeripheral {
 
   class Delegate: CBMPeripheralSpecDelegate {
     var peripheralDidReceiveConnectionRequestResult: Result<Void, Error>
-    init( peripheralDidReceiveConnectionRequestResult: Result<Void, Error> = .success(())) {
+    init(peripheralDidReceiveConnectionRequestResult: Result<Void, Error> = .success(())) {
       self.peripheralDidReceiveConnectionRequestResult = peripheralDidReceiveConnectionRequestResult
     }
+
     func peripheralDidReceiveConnectionRequest(_: CBMPeripheralSpec) -> Result<Void, Error> {
       return peripheralDidReceiveConnectionRequestResult
     }
   }
 
-  static func makeDevice(delegate: CBMPeripheralSpecDelegate) -> CBMPeripheralSpec {
-    CBMPeripheralSpec
+  static func makeDevice(delegate: CBMPeripheralSpecDelegate, isKnown: Bool = false) -> CBMPeripheralSpec {
+    var spec = CBMPeripheralSpec
       .simulatePeripheral(proximity: .near)
       .advertising(
         advertisementData: [
@@ -41,6 +42,11 @@ class MockPeripheral {
         connectionInterval: 0.045,
         mtu: 23
       )
-      .build()
+
+    if isKnown {
+      spec = spec.allowForRetrieval()
+    }
+
+    return spec.build()
   }
 }

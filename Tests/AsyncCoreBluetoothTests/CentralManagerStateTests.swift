@@ -26,6 +26,7 @@ final class CentralManagerStateTests: XCTestCase, XCTestObservation {
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
     let centralManager = CentralManager(forceMock: true)
     await centralManager.start()
+    try await Task.sleep(nanoseconds: 1)
     await MainActor.run {
       let state = centralManager.bleState
       XCTAssertEqual(state, .poweredOn)
