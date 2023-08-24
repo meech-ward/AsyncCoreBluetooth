@@ -20,7 +20,7 @@ public actor Peripheral: ObservableObject {
 
   public private(set) var cbPeripheral: CBMPeripheral
 
-  @MainActor public private(set) var identifier: UUID 
+  @MainActor public let identifier: UUID 
   @MainActor @Published public internal(set) var connectionState: ConnectionState = .disconnected(nil)
   @MainActor @Published public private(set) var name: String?
 
@@ -38,9 +38,31 @@ public actor Peripheral: ObservableObject {
     }
   }
 
-  // var state: PeripheralState {
-  //   peripheral.state
-  // }
+//  var state: PeripheralState {
+//    cbPeripheral.state
+//  }
 
   var services: [CBMService]?
+}
+
+//extension Peripheral: Identifiable {
+//  public static func == (lhs: Peripheral, rhs: Peripheral) -> Bool {
+//    lhs.identifier == rhs.identifier
+//  }
+//}
+
+extension Peripheral: Identifiable, Equatable {
+  public static func == (lhs: Peripheral, rhs: Peripheral) -> Bool {
+    lhs.identifier == rhs.identifier
+  }
+}
+
+extension Peripheral: Hashable {
+  public static func != (lhs: Peripheral, rhs: Peripheral) -> Bool {
+    return lhs.identifier != rhs.identifier
+  }
+
+  public nonisolated func hash(into hasher: inout Hasher) {
+    hasher.combine(identifier)
+  }
 }

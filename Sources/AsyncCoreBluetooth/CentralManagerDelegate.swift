@@ -52,6 +52,11 @@ extension CentralManager {
   func centralManager(_ central: CBMCentralManager, didUpdateANCSAuthorizationFor cbPeripheral: CBMPeripheral) {
     print("centralManager \(central) didUpdateANCSAuthorizationFor \(cbPeripheral)")
   }
+  
+  func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral peripheral: CBMPeripheral, timestamp: CFAbsoluteTime, isReconnecting: Bool, error: Error?) {
+    print("centralManager \(central) didDisconnectPeripheral \(peripheral) timestamp \(timestamp) isReconnecting \(isReconnecting) error \(String(describing: error))")   
+  }
+  
 }
 
 class CentralManagerDelegate: NSObject, CBMCentralManagerDelegate {
@@ -99,4 +104,9 @@ class CentralManagerDelegate: NSObject, CBMCentralManagerDelegate {
     Task { await centralManager.centralManager(central, didUpdateANCSAuthorizationFor: cbPeripheral) }
     centralManager.delegate?.centralManager(central, didUpdateANCSAuthorizationFor: cbPeripheral)
   }
+  
+   func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral peripheral: CBMPeripheral, timestamp: CFAbsoluteTime, isReconnecting: Bool, error: Error?) {
+     Task { await centralManager.centralManager(central, didDisconnectPeripheral: peripheral, timestamp: timestamp, isReconnecting: isReconnecting, error: error) }
+     centralManager.delegate?.centralManager(central, didDisconnectPeripheral: peripheral, timestamp: timestamp, isReconnecting: isReconnecting, error: error)
+   }
 }
