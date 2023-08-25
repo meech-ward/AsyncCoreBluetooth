@@ -24,6 +24,7 @@ let package = Package(
     // .package(url: /* package url */, from: "1.0.0"),
     .package(url: "https://github.com/meech-ward/IOS-CoreBluetooth-Mock.git", branch: "main"),
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
+    .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.1.0"),
   ],
   targets: [
     // Targets are the basic building blocks of a package, defining a module or a test suite.

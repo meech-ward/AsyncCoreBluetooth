@@ -27,7 +27,10 @@ public actor Peripheral: ObservableObject {
 
   // A cache of peripherals to avoid creating new ones every time
   @MainActor private(set) static var storedPeripherals: [UUID: Peripheral] = [:]
-
+  
+  /// <#Description#>
+  /// - Parameter cbPeripheral: <#cbPeripheral description#>
+  /// - Returns: <#description#>
   @MainActor static func getOrCreatePeripheral(cbPeripheral: CBMPeripheral) -> Peripheral {
     if let peripheral = storedPeripherals[cbPeripheral.identifier] {
       return peripheral

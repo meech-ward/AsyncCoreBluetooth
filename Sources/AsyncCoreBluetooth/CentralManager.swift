@@ -2,30 +2,62 @@ import AsyncAlgorithms
 import CoreBluetoothMock
 import Foundation
 
+/// This class wraps the `CBMCentralManager` class and provides an async interface for interacting with it.
+///
+/// You can initialize a ``CentralManager`` with optional parameters, but you probably don't need to pass in any of them. Just call `CentralManager()`.
+/// Once you've created a ``CentralManager``, you'll need to call start before using any of the other methods. From there, it's very similar to using a `CBCentralManager`, but data is accessed using swift concurrency instead of delegate methods.
+///
+/// Example:
+/// ```swift
+/// import AsyncCoreBluetooth
+///
+/// let centralManager = CentralManager()
+///
+/// for await bleState in await centralManager.start() {
+///   switch bleState {
+///     case .unknown:
+///       print("Unkown")
+///     case .resetting:
+///       print("Resetting")
+///     case .unsupported:
+///       print("Unsupported")
+///     case .unauthorized:
+///       print("Unauthorized")
+///     case .poweredOff:
+///       print("Powered Off")
+///     case .poweredOn:
+///       print("Powered On, ready to scan")
+///       break
+///   }
+/// }
+/// 
+/// for await devices in try await centralManager.scanForPeripherals(withServices: []) {
+///   print("Found device: \(device)")
+/// }
+/// ```
+///
 public actor CentralManager: ObservableObject {
-  public enum CentralManagerError: Error {
-    case alreadyScanning
-    case notPoweredOn
-  }
-
-  /// A flag to force mocking also on physical device. Useful for testing.
+  // A flag to force mocking also on physical device. Useful for testing.
   private let forceMock: Bool
-  /// An optional delegate for a more clasical implementationl. These will get sent straight from the CBMCentralManager delegate without going through the CentralManager actor. Avoid using this if you can.
-  let delegate: CBMCentralManagerDelegate?
-  /// An optional dispatch queue to be passed into CBMCentralManager. Probably unnessary since this thing is an actor and all outside method calls are going to be async.
+  // An optional dispatch queue to be passed into CBMCentralManager. Probably unnessary since this thing is an actor and all outside method calls are going to be async.
   private let queue: DispatchQueue?
-  /// An optional `options` dictionary to be passed into CBMCentralManager.
+  // An optional `options` dictionary to be passed into CBMCentralManager.
   private let options: [String: Any]?
 
+  // The internal delegate used to receive data from core data and emit that data using swift concurrency
   private lazy var centralManagerDelegate: CentralManagerDelegate = .init(centralManager: self)
+  // An optional delegate for a more clasical implementationl. These will get sent straight from the CBMCentralManager delegate without going through the CentralManager actor. Avoid using this if you can.
+  let delegate: CBMCentralManagerDelegate?
 
-  /// The underlying CBMCentralManager instance.
+  /// The underlying ``CBMCentralManager`` instance.
+  ///
+  /// Avoid using this if you can. It's been left public in case this library missed some functionality that is only available in the underlying ``CBMCentralManager``.
   public lazy var centralManager: CBMCentralManager = CBMCentralManagerFactory.instance(delegate: centralManagerDelegate,
                                                                                         queue: queue,
                                                                                         options: options,
                                                                                         forceMock: forceMock)
 
-  /// Initializes the central manager with optional parameters.
+  /// Initializes the central manager with optional parameters, but you probably don't need to pass in any of them. Just call `CentralManager()`
   ///
   /// - Parameters:
   ///   - delegate: An optional delegate for handling callbacks.
@@ -41,11 +73,46 @@ public actor CentralManager: ObservableObject {
 
   // MARK: - ble states (CentralManagerState)
 
-  @Published @MainActor public var bleState: CentralManagerState = .unknown
+  /// The device's current ``CentralManagerState``.
+  ///
+  /// This is a published property that you can use with SwiftUI to inform the user of the current state of BLE.
+  ///
+  /// Example Usage:
+  /// ```swift
+  ///  @StateObject var centralManager = CentralManager()
+  ///  var body: some View {
+  ///    VStack {
+  ///      switch centralManager.bleState {
+  ///      case .unknown:
+  ///        Text("Unkown")
+  ///      case .resetting:
+  ///        Text("Resetting")
+  ///      case .unsupported:
+  ///        Text("Your device does not support Bluetooth")
+  ///      case .unauthorized:
+  ///        Text("Go into settings and authorize this app to use Bluetooth")
+  ///      case .poweredOff:
+  ///        Text("Turn your device's Bluetooth on")
+  ///      case .poweredOn:
+  ///        Text("Ready to go")
+  ///      }
+  ///    }
+  ///  }
+  /// ```
+  @Published @MainActor public internal(set) var bleState: CentralManagerState = .unknown
 
-  /// Starts the central manager and sets the BLE state.
+  // internally manage the state continuations
+  var stateContinuations: [UUID: AsyncStream<CentralManagerState>.Continuation] = [:]
+  func setStateContinuation(id: UUID, continuation: AsyncStream<CentralManagerState>.Continuation?) {
+    stateContinuations[id] = continuation
+  }
+
+  /// Starts the central manager and starts monitoring the `CentralManagerState` changes.
+  ///
+  /// This method is safe to call multiple times.
   ///
   /// This function retrieves the state from the underlying central manager and updates the published `bleState` property.
+  /// You can also monitor the state changes using an async stream by calling the other `start() -> AsyncStream<CentralManagerState>` method
   public func start() async {
     let state = centralManager.state
     await MainActor.run {
@@ -53,16 +120,12 @@ public actor CentralManager: ObservableObject {
     }
   }
 
-  var stateContinuations: [UUID: AsyncStream<CentralManagerState>.Continuation] = [:]
-
-  func setStateContinuation(id: UUID, continuation: AsyncStream<CentralManagerState>.Continuation?) {
-    stateContinuations[id] = continuation
-  }
-
-  /// Starts monitoring BLE state changes and returns an `AsyncStream`.
+  /// Starts the central manager and starts monitoring the `CentralManagerState` changes.
+  ///
   /// This method is safe to call multiple times in order to check the potentially changing state of the underlying `CBCentralManager`.
   ///
-  /// This function returns an `AsyncStream` that can be used to monitor changes to the BLE state.
+  /// This function retrieves the state from the underlying central manager and updates the published `bleState` property.
+  /// It also returns an `AsyncStream` that can be used to monitor changes to the BLE state using swift concurrency.
   /// Continuations are managed internally to track state changes.
   ///
   /// Example usage:
@@ -71,6 +134,8 @@ public actor CentralManager: ObservableObject {
   ///   print("BLE state changed to: \(state)")
   /// }
   /// ```
+  ///
+  /// - Returns: an async stream that represents the up to date CentralManagerState
   public func start() -> AsyncStream<CentralManagerState> {
     return AsyncStream { [weak self] continuation in
       guard let self = self else { return }
@@ -78,7 +143,11 @@ public actor CentralManager: ObservableObject {
       let id = UUID()
       Task {
         await self.setStateContinuation(id: id, continuation: continuation)
-        await continuation.yield(self.centralManager.state)
+        let state = await self.centralManager.state
+        continuation.yield(state)
+        await MainActor.run {
+          self.bleState = state
+        }
       }
 
       continuation.onTermination = { @Sendable [weak self] _ in
@@ -94,6 +163,23 @@ public actor CentralManager: ObservableObject {
 
   // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667498
 
+  /// A flag to determine whether the central manager is currently scanning for peripherals.
+  ///
+  /// This is a published property, so you can use this in SwiftUI to inform the user of the current scanning state.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// @StateObject var centralManager = CentralManager()
+  /// var body: some View {
+  ///  VStack {
+  ///   if centralManager.isScanning {
+  ///      Text("Scanning")
+  ///    } else {
+  ///      Text("Not Scanning")
+  ///    }
+  ///  }
+  /// }
+  /// ```
   @Published @MainActor public private(set) var isScanning = false
   private(set) var internalIsScanning = false {
     willSet {
@@ -105,21 +191,32 @@ public actor CentralManager: ObservableObject {
     }
   }
 
+  // internally manage the state continuations
   var scanForPeripheralsContinuation: AsyncStream<Peripheral>.Continuation?
   func setScanForPeripheralsContinuation(_ scanForPeripheralsContinuation: AsyncStream<Peripheral>.Continuation?) {
     self.scanForPeripheralsContinuation = scanForPeripheralsContinuation
   }
 
   /// Scans for peripherals that are advertising services.
-  /// Scan will stop when task is canceled, so no need to call `stopScan()`.
   ///
+  /// Scan will stop when task is canceled, so you don't need to call ``stopScan()``, but you do need to manage the task.
+  /// All you need to do is cancel the parent task or break out of the loop when you're done scanning. That will cause the central manager's scan to stop.
+  /// Optionally you can call ``stopScan()`` if you need to force it to stop without using swift concurrency. This will also cause the async stream to terminate.
+  ///
+  /// Example Usage:
   /// ```swift
   /// for await device in try await centralManager.scanForPeripherals(withServices: [...]) {
   ///  print("Found device: \(device)")
+  /// // maybe add the device to a published set of devices you can present to the user
+  /// // break out of the loop or cancel the parent task when you're done scanning
   /// }
   /// ```
   ///
   /// see https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518986-scanforperipherals
+  ///
+  /// - Throws:
+  ///   - `CentralManagerError.notPoweredOn` if the central manager is **not** in the poweredOn state.
+  ///   - `CentralManagerError.alreadyScanning` if the central manager is already scanning.
   public func scanForPeripherals(withServices services: [CBMUUID]?, options _: [String: Any]? = nil) throws -> AsyncStream<Peripheral> {
     guard centralManager.state == .poweredOn else {
       throw CentralManagerError.notPoweredOn
@@ -174,6 +271,8 @@ public actor CentralManager: ObservableObject {
 
   // MARK: - Establishing or Canceling Connections with Peripherals
 
+  /// ## Establishing or Canceling Connections with Peripherals
+
   // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667358
 
   typealias PeripheralConnectionContinuation = (peripheralUUID: UUID, continuation: AsyncStream<Peripheral.ConnectionState>.Continuation)
@@ -194,14 +293,6 @@ public actor CentralManager: ObservableObject {
     for peripheralConnectionContinuation in peripheralConnectionContinuations {
       peripheralConnectionContinuation.continuation.yield(state)
     }
-  }
-
-  public enum PeripheralConnectionError: Error {
-    case alreadyConnecting
-    case alreadyConnected
-    case alreadyDisconnecting
-    case alreadyDisconnected
-    case failedToConnect
   }
 
   /// Establishes a local connection to a peripheral.
@@ -318,7 +409,8 @@ public actor CentralManager: ObservableObject {
 
   // MARK: - Inspecting Feature Support
 
-  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#3222461
+  /// Returns a boolean value representing the support for the provided features.
+  /// See:  https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#3222461
   #if !os(macOS)
     public static func supports(_ features: CBMCentralManager.Feature) -> Bool {
       return CBMCentralManager.supports(features)
@@ -327,7 +419,8 @@ public actor CentralManager: ObservableObject {
 
   // MARK: - Receiving Connection Events
 
-  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#3222461
+  
+  /// See: https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#3222461
   func registerForConnectionEvents(options _: [CBMConnectionEventMatchingOption: Any]? = nil) {
     // Not implemented yet
   }
