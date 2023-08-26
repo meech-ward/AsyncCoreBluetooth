@@ -4,7 +4,6 @@ import Foundation
 // CBMCentralManagerDelegate
 extension CentralManager {
   func centralManagerDidUpdateState(_ central: CBMCentralManager) async {
-//    print("centralManagerDidUpdateState \(central)")
     await MainActor.run {
       bleState = central.state
     }
@@ -12,11 +11,10 @@ extension CentralManager {
   }
 
   func centralManager(_ central: CBMCentralManager, willRestoreState dict: [String: Any]) {
-    print("centralManager \(central) willRestoreState \(dict)")
+    print("centralManager \(central) willRestoreState \(dict). Not yet implemented.")
   }
 
   func centralManager(_: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData _: [String: Any], rssi _: NSNumber) async {
-    // print("centralManager \(central) didDiscover \(cbPeripheral) advertisementData \(advertisementData) rssi \(RSSI)")
     guard let scanForPeripheralsContinuation = scanForPeripheralsContinuation else {
       return
     }
@@ -25,36 +23,32 @@ extension CentralManager {
   }
 
   func centralManager(_: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
-    // print("centralManager \(central) didConnect \(cbPeripheral)")
     let state: Peripheral.ConnectionState = .connected
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) async {
-    // print("centralManager \(central) didFailToConnect \(cbPeripheral) error \(String(describing: error))")
-
     let error = error as? CBMError ?? CBMError(.unknown)
     let state: Peripheral.ConnectionState = .failedToConnect(error)
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral cbPeripheral: CBMPeripheral, error: Error?) async {
-    // print("centralManager \(central) didDisconnectPeripheral \(cbPeripheral) error \(String(describing: error))")
     let error = error as? CBMError
     let state: Peripheral.ConnectionState = .disconnected(error)
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_ central: CBMCentralManager, connectionEventDidOccur event: CBMConnectionEvent, for cbPeripheral: CBMPeripheral) async {
-    print("centralManager \(central) connectionEventDidOccur \(event) for \(cbPeripheral)")
+    print("centralManager \(central) connectionEventDidOccur \(event) for \(cbPeripheral). Not yet implemented.")
   }
 
   func centralManager(_ central: CBMCentralManager, didUpdateANCSAuthorizationFor cbPeripheral: CBMPeripheral) {
-    print("centralManager \(central) didUpdateANCSAuthorizationFor \(cbPeripheral)")
+    print("centralManager \(central) didUpdateANCSAuthorizationFor \(cbPeripheral). Not yet implemented.")
   }
   
   func centralManager(_ central: CBMCentralManager, didDisconnectPeripheral peripheral: CBMPeripheral, timestamp: CFAbsoluteTime, isReconnecting: Bool, error: Error?) {
-    print("centralManager \(central) didDisconnectPeripheral \(peripheral) timestamp \(timestamp) isReconnecting \(isReconnecting) error \(String(describing: error))")   
+    print("centralManager \(central) didDisconnectPeripheral \(peripheral) timestamp \(timestamp) isReconnecting \(isReconnecting) error \(String(describing: error)). Not yet implemented.")
   }
   
 }
