@@ -1,0 +1,23 @@
+name: test-async-core-bluetooth
+run-name: ${{ github.actor }} is running tests
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: swift:latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build and Test
+        run: |
+          swift build
+          swift test
