@@ -37,6 +37,7 @@ import Foundation
 /// ```
 ///
 public actor CentralManager: ObservableObject {
+  
   // A flag to force mocking also on physical device. Useful for testing.
   private let forceMock: Bool
   // An optional dispatch queue to be passed into CBMCentralManager. Probably unnessary since this thing is an actor and all outside method calls are going to be async.
@@ -46,8 +47,12 @@ public actor CentralManager: ObservableObject {
 
   // The internal delegate used to receive data from core data and emit that data using swift concurrency
   private lazy var centralManagerDelegate: CentralManagerDelegate = .init(centralManager: self)
-  // An optional delegate for a more clasical implementationl. These will get sent straight from the CBMCentralManager delegate without going through the CentralManager actor. Avoid using this if you can.
-  let delegate: CBMCentralManagerDelegate?
+
+  /// An optional delegate for a more clasical implementation. 
+  ///
+  /// The delegate methods will get called straight from the CBMCentralManager delegate without going through the CentralManager actor. Avoid using this if you can and just use async streams.
+  /// However, if you really need to use the delegate, you can pass it in here. This will not effect the async streams.
+  public var delegate: CBMCentralManagerDelegate?
 
   /// The underlying ``CBMCentralManager`` instance.
   ///
@@ -60,7 +65,7 @@ public actor CentralManager: ObservableObject {
   /// Initializes the central manager with optional parameters, but you probably don't need to pass in any of them. Just call `CentralManager()`
   ///
   /// - Parameters:
-  ///   - delegate: An optional delegate for handling callbacks.
+  ///   - delegate: An optional delegate for a more clasical implementation. 
   ///   - queue: An optional dispatch queue for delegate callbacks.
   ///   - options: An optional dictionary containing options for the central manager.
   ///   - forceMock: A flag to determine whether to use a mock central manager.

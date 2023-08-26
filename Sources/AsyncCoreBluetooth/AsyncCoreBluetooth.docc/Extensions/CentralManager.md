@@ -40,7 +40,3 @@ Central Manager is the core class responsible for managing and interacting with 
 
 - ``supports(_:)``
 
-### Receiving Connection Events
-
-- ``registerForConnectionEvents(options:)``
-
