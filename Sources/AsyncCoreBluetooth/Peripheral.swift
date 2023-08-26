@@ -14,7 +14,6 @@ import Foundation
 ///
 /// You don’t create Peripheral instances directly. Instead, you receive them from the central manager when you discover, connect to, or retrieve connected peripherals.
 public actor Peripheral: ObservableObject {
-  
   // MARK: - Peripheral Properties
 
   /// The underlying ``CBMPeripheral`` instance.
@@ -130,9 +129,27 @@ public actor Peripheral: ObservableObject {
     self.cbPeripheral = cbPeripheral
     identifier = cbPeripheral.identifier
     name = cbPeripheral.name
+    cbPeripheral.delegate = PeripheralDelegate(peripheral: self)
   }
 
-  var services: [CBMService]?
+  // MARK: - Discovering Services
+
+  // https://developer.apple.com/documentation/corebluetooth/cbperipheral#1667320
+
+  /// Discovers the specified services of the peripheral.
+  func discoverServices(_ serviceUUIDs: [CBUUID]?) {
+
+  }
+
+  /// Discovers the specified included services of a previously-discovered service.
+  func discoverIncludedServices(_ includedServiceUUIDs: [CBUUID]?, for service: Service) {
+
+  }
+
+  /// A list of a peripheral’s discovered services.
+  var services: [Service]? {
+    return cbPeripheral.services as [Service]?
+  }
 }
 
 extension Peripheral: Identifiable, Equatable {

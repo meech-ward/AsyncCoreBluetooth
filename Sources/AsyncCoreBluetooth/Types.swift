@@ -6,6 +6,10 @@ public typealias CentralManagerState = CBMManagerState
 
 public typealias PeripheralState = CBMPeripheralState
 
+public typealias Service = CBMService
+public typealias Characteristic = CBMCharacteristic
+public typealias Descriptor = CBMDescriptor
+
 public enum CentralManagerError: Error {
   case alreadyScanning
   case notPoweredOn
