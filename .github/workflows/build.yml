@@ -17,7 +17,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Build and Test
-        run: |
-          swift build
-          swift test
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
