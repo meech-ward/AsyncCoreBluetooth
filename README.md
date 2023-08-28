@@ -1,3 +1,7 @@
+# Async Core Bluetooth
+
+![Build and Test](https://github.com/meech-ward/AsyncCoreBluetooth/actions/workflows/build.yml/badge.svg)
+
 This library is wrapper around [CoreBluetooth](https://developer.apple.com/documentation/corebluetooth) and [CoreBluetoothMock](https://github.com/NordicSemiconductor/IOS-CoreBluetooth-Mock) that allows you to write your core bluetooth code using swift concurrency. It also plays nice with SwiftUI.
 
 The main classes are:
@@ -86,6 +90,14 @@ struct ContentView: View {
   }
 }
 ```
+
+Your application should handle all the possible cases of the ble state. It's very common for someone to turn off bluetooth or turn on airplane mode and your application's UI should reflect these states. However, the most common case is `.poweredOn`, so if you're only interested in running code as soon as the device is in that state, you can use the following:
+
+```swift
+_ = await centralManager.start().first(where: {$0 == .poweredOn})
+```
+
+Keep in mind that familiarity with swift concurrency is going to make using this library a lot easier.  
 
 ### Scanning or Stopping Scans of Peripherals
 
