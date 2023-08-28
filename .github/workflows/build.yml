@@ -10,8 +10,10 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-    
+
     steps:
+      - uses: swift-actions/setup-swift@v1
+
       - name: Checkout code
         uses: actions/checkout@v2
 
