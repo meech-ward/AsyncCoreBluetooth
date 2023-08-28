@@ -10,9 +10,12 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-     steps:
-      - uses: actions/checkout@v2
-      - name: Build
-        run: swift build
-      - name: Run tests
-        run: swift test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build and Test
+        run: |
+          swift build
+          swift test
