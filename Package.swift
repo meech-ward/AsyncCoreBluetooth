@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 5.8.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -10,7 +10,7 @@ let package = Package(
     .macOS(.v10_15), // Combine was introduced in macOS 10.15
     .watchOS(.v6), // Combine was introduced in watchOS 6
     .tvOS(.v13), // Combine was introduced in tvOS 13
-    .visionOS(.v1),
+    // .visionOS(.v1),
   ],
   products: [
     // Products define the executables and libraries a package produces, making them visible to other packages.
