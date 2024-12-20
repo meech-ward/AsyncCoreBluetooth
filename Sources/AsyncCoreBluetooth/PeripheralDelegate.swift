@@ -3,60 +3,65 @@ import Foundation
 
 // CBMPeripheralDelegate
 extension Peripheral {
-  func peripheralDidUpdateName(_ peripheral: CBMPeripheral) {
-    print("peripheralDidUpdateName \(peripheral)")
+  func peripheralDidUpdateName(_ cbPeripheral: CBMPeripheral) {
+    print("peripheralDidUpdateName \(cbPeripheral)")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didModifyServices invalidatedServices: [CBMService]) {
-    print("peripheral \(peripheral) didModifyServices \(invalidatedServices)")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didModifyServices invalidatedServices: [CBMService]) {
+    print("peripheral \(cbPeripheral) didModifyServices \(invalidatedServices)")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
-    print("peripheral \(peripheral) didReadRSSI \(RSSI) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
+    print("peripheral \(cbPeripheral) didReadRSSI \(RSSI) error \(String(describing: error))")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didDiscoverServices error: Error?) {
-    print("peripheral \(peripheral) didDiscoverServices \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) {
+    guard let services = cbPeripheral.services else {
+      return
+    }
+    print("peripheral \(cbPeripheral) didDiscoverServices \(String(describing: error))")
+    print(services)
+    print(services.map { $0.uuid })
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didDiscoverIncludedServicesFor service: CBMService, error: Error?) {
-    print("peripheral \(peripheral) didDiscoverIncludedServicesFor \(service) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverIncludedServicesFor service: CBMService, error: Error?) {
+    print("peripheral \(cbPeripheral) didDiscoverIncludedServicesFor \(service) error \(String(describing: error))")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didDiscoverCharacteristicsFor service: CBMService, error: Error?) {
-    print("peripheral \(peripheral) didDiscoverCharacteristicsFor \(service) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverCharacteristicsFor service: CBMService, error: Error?) {
+    print("peripheral \(cbPeripheral) didDiscoverCharacteristicsFor \(service) error \(String(describing: error))")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didUpdateValueFor characteristic: CBMCharacteristic, error: Error?) {
-    print("peripheral \(peripheral) didUpdateValueFor \(characteristic) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didUpdateValueFor characteristic: CBMCharacteristic, error: Error?) {
+    print("peripheral \(cbPeripheral) didUpdateValueFor \(characteristic) error \(String(describing: error))")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didWriteValueFor characteristic: CBMCharacteristic, error: Error?) {
-    print("peripheral \(peripheral) didWriteValueFor \(characteristic) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didWriteValueFor characteristic: CBMCharacteristic, error: Error?) {
+    print("peripheral \(cbPeripheral) didWriteValueFor \(characteristic) error \(String(describing: error))")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didUpdateNotificationStateFor characteristic: CBMCharacteristic, error: Error?) {
-    print("peripheral \(peripheral) didUpdateNotificationStateFor \(characteristic) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didUpdateNotificationStateFor characteristic: CBMCharacteristic, error: Error?) {
+    print("peripheral \(cbPeripheral) didUpdateNotificationStateFor \(characteristic) error \(String(describing: error))")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didDiscoverDescriptorsFor characteristic: CBMCharacteristic, error: Error?) {
-    print("peripheral \(peripheral) didDiscoverDescriptorsFor \(characteristic) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverDescriptorsFor characteristic: CBMCharacteristic, error: Error?) {
+    print("peripheral \(cbPeripheral) didDiscoverDescriptorsFor \(characteristic) error \(String(describing: error))")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didUpdateValueFor descriptor: CBMDescriptor, error: Error?) {
-    print("peripheral \(peripheral) didUpdateValueFor \(descriptor) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didUpdateValueFor descriptor: CBMDescriptor, error: Error?) {
+    print("peripheral \(cbPeripheral) didUpdateValueFor \(descriptor) error \(String(describing: error))")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didWriteValueFor descriptor: CBMDescriptor, error: Error?) {
-    print("peripheral \(peripheral) didWriteValueFor \(descriptor) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didWriteValueFor descriptor: CBMDescriptor, error: Error?) {
+    print("peripheral \(cbPeripheral) didWriteValueFor \(descriptor) error \(String(describing: error))")
   }
 
-  func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBMPeripheral) {
-    print("peripheralIsReadyToSendWriteWithoutResponse \(peripheral)")
+  func peripheralIsReady(toSendWriteWithoutResponse cbPeripheral: CBMPeripheral) {
+    print("peripheralIsReadyToSendWriteWithoutResponse \(cbPeripheral)")
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didOpen channel: CBML2CAPChannel?, error: Error?) {
-    print("peripheral \(peripheral) didOpen \(String(describing: channel)) error \(String(describing: error))")
+  func peripheral(_ cbPeripheral: CBMPeripheral, didOpen channel: CBML2CAPChannel?, error: Error?) {
+    print("peripheral \(cbPeripheral) didOpen \(String(describing: channel)) error \(String(describing: error))")
   }
 }
 
@@ -66,101 +71,101 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate {
     self.peripheral = peripheral
   }
 
-  func peripheralDidUpdateName(_ peripheral: CBMPeripheral) {
+  func peripheralDidUpdateName(_ cbPeripheral: CBMPeripheral) {
     Task {
-      await self.peripheral.peripheralDidUpdateName(peripheral)
-      peripheral.delegate?.peripheralDidUpdateName(peripheral)
+      await peripheral.peripheralDidUpdateName(cbPeripheral)
+      await await peripheral.delegate?.peripheralDidUpdateName(cbPeripheral)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didModifyServices invalidatedServices: [CBMService]) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didModifyServices invalidatedServices: [CBMService]) {
     Task {
-      await self.peripheral.peripheral(peripheral, didModifyServices: invalidatedServices)
-      peripheral.delegate?.peripheral(peripheral, didModifyServices: invalidatedServices)
+      await peripheral.peripheral(cbPeripheral, didModifyServices: invalidatedServices)
+      await peripheral.delegate?.peripheral(cbPeripheral, didModifyServices: invalidatedServices)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didReadRSSI: RSSI, error: error)
-      peripheral.delegate?.peripheral(peripheral, didReadRSSI: RSSI, error: error)
+      await peripheral.peripheral(cbPeripheral, didReadRSSI: RSSI, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didReadRSSI: RSSI, error: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didDiscoverServices error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didDiscoverServices: error)
-      peripheral.delegate?.peripheral(peripheral, didDiscoverServices: error)
+      await peripheral.peripheral(cbPeripheral, didDiscoverServices: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didDiscoverIncludedServicesFor service: CBMService, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverIncludedServicesFor service: CBMService, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didDiscoverIncludedServicesFor: service, error: error)
-      peripheral.delegate?.peripheral(peripheral, didDiscoverIncludedServicesFor: service, error: error)
+      await peripheral.peripheral(cbPeripheral, didDiscoverIncludedServicesFor: service, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didDiscoverIncludedServicesFor: service, error: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didDiscoverCharacteristicsFor service: CBMService, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverCharacteristicsFor service: CBMService, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didDiscoverCharacteristicsFor: service, error: error)
-      peripheral.delegate?.peripheral(peripheral, didDiscoverCharacteristicsFor: service, error: error)
+      await peripheral.peripheral(cbPeripheral, didDiscoverCharacteristicsFor: service, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didDiscoverCharacteristicsFor: service, error: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didUpdateValueFor characteristic: CBMCharacteristic, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didUpdateValueFor characteristic: CBMCharacteristic, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didUpdateValueFor: characteristic, error: error)
-      peripheral.delegate?.peripheral(peripheral, didUpdateValueFor: characteristic, error: error)
+      await peripheral.peripheral(cbPeripheral, didUpdateValueFor: characteristic, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didUpdateValueFor: characteristic, error: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didWriteValueFor characteristic: CBMCharacteristic, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didWriteValueFor characteristic: CBMCharacteristic, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didWriteValueFor: characteristic, error: error)
-      peripheral.delegate?.peripheral(peripheral, didWriteValueFor: characteristic, error: error)
+      await peripheral.peripheral(cbPeripheral, didWriteValueFor: characteristic, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didWriteValueFor: characteristic, error: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didUpdateNotificationStateFor characteristic: CBMCharacteristic, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didUpdateNotificationStateFor characteristic: CBMCharacteristic, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didUpdateNotificationStateFor: characteristic, error: error)
-      peripheral.delegate?.peripheral(peripheral, didUpdateNotificationStateFor: characteristic, error: error)
+      await peripheral.peripheral(cbPeripheral, didUpdateNotificationStateFor: characteristic, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didUpdateNotificationStateFor: characteristic, error: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didDiscoverDescriptorsFor characteristic: CBMCharacteristic, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverDescriptorsFor characteristic: CBMCharacteristic, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didDiscoverDescriptorsFor: characteristic, error: error)
-      peripheral.delegate?.peripheral(peripheral, didDiscoverDescriptorsFor: characteristic, error: error)
+      await peripheral.peripheral(cbPeripheral, didDiscoverDescriptorsFor: characteristic, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didDiscoverDescriptorsFor: characteristic, error: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didUpdateValueFor descriptor: CBMDescriptor, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didUpdateValueFor descriptor: CBMDescriptor, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didUpdateValueFor: descriptor, error: error)
-      peripheral.delegate?.peripheral(peripheral, didUpdateValueFor: descriptor, error: error)
+      await peripheral.peripheral(cbPeripheral, didUpdateValueFor: descriptor, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didUpdateValueFor: descriptor, error: error)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didWriteValueFor descriptor: CBMDescriptor, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didWriteValueFor descriptor: CBMDescriptor, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didWriteValueFor: descriptor, error: error)
-      peripheral.delegate?.peripheral(peripheral, didWriteValueFor: descriptor, error: error)
+      await peripheral.peripheral(cbPeripheral, didWriteValueFor: descriptor, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didWriteValueFor: descriptor, error: error)
     }
   }
 
-  func peripheralIsReadyToSendWriteWithoutResponse(_ peripheral: CBMPeripheral) {
+  func peripheralIsReadyToSendWriteWithoutResponse(_ cbPeripheral: CBMPeripheral) {
     Task {
-      await self.peripheral.peripheralIsReady(toSendWriteWithoutResponse: peripheral)
-      peripheral.delegate?.peripheralIsReady(toSendWriteWithoutResponse: peripheral)
+      await peripheral.peripheralIsReady(toSendWriteWithoutResponse: cbPeripheral)
+      await peripheral.delegate?.peripheralIsReady(toSendWriteWithoutResponse: cbPeripheral)
     }
   }
 
-  func peripheral(_ peripheral: CBMPeripheral, didOpen channel: CBML2CAPChannel?, error: Error?) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didOpen channel: CBML2CAPChannel?, error: Error?) {
     Task {
-      await self.peripheral.peripheral(peripheral, didOpen: channel, error: error)
-      peripheral.delegate?.peripheral(peripheral, didOpen: channel, error: error)
+      await peripheral.peripheral(cbPeripheral, didOpen: channel, error: error)
+      await peripheral.delegate?.peripheral(cbPeripheral, didOpen: channel, error: error)
     }
   }
 }

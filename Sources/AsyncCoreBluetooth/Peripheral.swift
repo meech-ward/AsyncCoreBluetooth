@@ -48,6 +48,7 @@ public actor Peripheral: ObservableObject {
   /// The delegate methods will get called straight from the CBMPeripheral delegate without going through the Peripheral actor. Avoid using this if you can and just use async streams.
   /// However, if you really need to use the delegate, you can pass it in here. This will not effect the async streams.
   public var delegate: CBMPeripheralDelegate?
+  private nonisolated lazy var peripheralDelegate = PeripheralDelegate(peripheral: self)
 
   // MARK: - Peripheral Connection State
 
@@ -59,7 +60,7 @@ public actor Peripheral: ObservableObject {
   /// * Calling disconnect() on the central manager will cause the connectionState to change to disconnecting
   /// * After disconnecting, the device will change to disconnected(nil)
   /// * If the device disconnects unexpectedly, the device will change straight from connected to disconnected(error)
-  public enum ConnectionState: Equatable {
+  public enum ConnectionState: Equatable, Sendable {
     case disconnected(CBError?)
     case connecting
     case connected
@@ -129,7 +130,7 @@ public actor Peripheral: ObservableObject {
     self.cbPeripheral = cbPeripheral
     identifier = cbPeripheral.identifier
     name = cbPeripheral.name
-    cbPeripheral.delegate = PeripheralDelegate(peripheral: self)
+    cbPeripheral.delegate = peripheralDelegate
   }
 
   // MARK: - Discovering Services
@@ -137,17 +138,42 @@ public actor Peripheral: ObservableObject {
   // https://developer.apple.com/documentation/corebluetooth/cbperipheral#1667320
 
   /// Discovers the specified services of the peripheral.
-  func discoverServices(_ serviceUUIDs: [CBUUID]?) {
+  // internally manage the state continuations
+  var discoverServicesContinuations: [UUID: AsyncStream<CentralManagerState>.Continuation] = [:]
+  func setdDiscoverServicesContinuation(id: UUID, continuation: AsyncStream<CentralManagerState>.Continuation?) {
+    discoverServicesContinuations[id] = continuation
+  }
 
+  public func discoverServices(_ serviceUUIDs: [CBUUID]?) {
+    cbPeripheral.discoverServices(serviceUUIDs)
+
+    // return AsyncStream { [weak self] continuation in
+    //   guard let self = self else { return }
+
+    //   let id = UUID()
+    //   Task {
+    //     await self.setStateContinuation(id: id, continuation: continuation)
+    //     let state = await self.centralManager.state
+    //     continuation.yield(state)
+    //     await MainActor.run {
+    //       self.bleState = state
+    //     }
+    //   }
+
+    //   continuation.onTermination = { @Sendable [weak self] _ in
+    //     guard let self = self else { return }
+    //     Task {
+    //       await self.setStateContinuation(id: id, continuation: nil)
+    //     }
+    //   }
+    // }
   }
 
   /// Discovers the specified included services of a previously-discovered service.
-  func discoverIncludedServices(_ includedServiceUUIDs: [CBUUID]?, for service: Service) {
-
-  }
+  public func discoverIncludedServices(_ includedServiceUUIDs: [CBUUID]?, for service: Service) {}
 
   /// A list of a peripheral’s discovered services.
-  var services: [Service]? {
+  public var services: [Service]? {
     return cbPeripheral.services as [Service]?
   }
 }

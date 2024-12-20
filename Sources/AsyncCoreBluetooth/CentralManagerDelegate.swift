@@ -1,3 +1,4 @@
+@preconcurrency
 import CoreBluetoothMock
 import Foundation
 
@@ -5,7 +6,7 @@ import Foundation
 extension CentralManager {
   func centralManagerDidUpdateState(_ central: CBMCentralManager) async {
     await MainActor.run {
-      bleState = central.state
+      centralManagerState.bleState = central.state
     }
     stateContinuations.values.forEach { $0.yield(central.state) }
   }
@@ -23,17 +24,20 @@ extension CentralManager {
   }
 
   func centralManager(_: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
+    print(cbPeripheral.identifier, "didConnect")
     let state: Peripheral.ConnectionState = .connected
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) async {
+    print(cbPeripheral.identifier, "didFailToConnect", error ?? "")
     let error = error as? CBMError ?? CBMError(.unknown)
     let state: Peripheral.ConnectionState = .failedToConnect(error)
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_: CBMCentralManager, didDisconnectPeripheral cbPeripheral: CBMPeripheral, error: Error?) async {
+    print(cbPeripheral.identifier, "didDisconnectPeripheral", error ?? "")
     let error = error as? CBMError
     let state: Peripheral.ConnectionState = .disconnected(error)
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)

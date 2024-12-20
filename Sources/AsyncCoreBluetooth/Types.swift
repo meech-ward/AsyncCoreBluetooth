@@ -2,9 +2,9 @@ import CoreBluetooth
 import CoreBluetoothMock
 
 /// See CoreBluetoothMock.CBMManagerTypes
-public typealias CentralManagerState = CBMManagerState
+public typealias CentralManagerBLEState = CBMManagerState
 
-public typealias PeripheralState = CBMPeripheralState
+public typealias PeripheralBLEState = CBMPeripheralState
 
 public typealias Service = CBMService
 public typealias Characteristic = CBMCharacteristic

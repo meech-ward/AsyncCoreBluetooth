@@ -1,4 +1,5 @@
 {
+  "originHash" : "0d2230eb42c38a96e8104e3cc75c3bc14d002d26376255a2c1e8c877777bf817",
   "pins" : [
     {
       "identity" : "ios-corebluetooth-mock",
@@ -6,7 +7,7 @@
       "location" : "https://github.com/meech-ward/IOS-CoreBluetooth-Mock.git",
       "state" : {
         "branch" : "main",
-        "revision" : "548ee341addd6fe7e04e3936d07d2a1c4904dc14"
+        "revision" : "10845e90f870a20c5b0a0471a28c8bff8ca2027a"
       }
     },
     {
@@ -46,5 +47,5 @@
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

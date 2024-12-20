@@ -1,4 +1,4 @@
-// swift-tools-version: 5.8.1
+// swift-tools-version: 6.0.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,11 +6,11 @@ import PackageDescription
 let package = Package(
   name: "AsyncCoreBluetooth",
   platforms: [
-    .iOS(.v13), // Combine was introduced in iOS 13
-    .macOS(.v10_15), // Combine was introduced in macOS 10.15
-    .watchOS(.v6), // Combine was introduced in watchOS 6
-    .tvOS(.v13), // Combine was introduced in tvOS 13
-    // .visionOS(.v1),
+    .iOS(.v16),
+    .macOS(.v14),
+    .watchOS(.v6),
+    .tvOS(.v13),
+    .visionOS(.v2),
   ],
   products: [
     // Products define the executables and libraries a package produces, making them visible to other packages.
@@ -33,7 +33,7 @@ let package = Package(
       name: "AsyncCoreBluetooth",
       dependencies: [
         .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-        .product(name: "CoreBluetoothMock", package: "IOS-CoreBluetooth-Mock")
+        .product(name: "CoreBluetoothMock", package: "IOS-CoreBluetooth-Mock"),
       ]
     ),
     .testTarget(
@@ -41,7 +41,7 @@ let package = Package(
       dependencies: [
         "AsyncCoreBluetooth",
         .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-        .product(name: "CoreBluetoothMock", package: "IOS-CoreBluetooth-Mock")
+        .product(name: "CoreBluetoothMock", package: "IOS-CoreBluetooth-Mock"),
       ]
     ),
   ]
