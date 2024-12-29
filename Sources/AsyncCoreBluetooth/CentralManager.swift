@@ -1,5 +1,6 @@
 //import AsyncAlgorithms
 @preconcurrency import CoreBluetoothMock
+@preconcurrency import CoreBluetooth
 import Foundation
 
 /// This class wraps the `CBMCentralManager` class and provides an async interface for interacting with it.
@@ -248,7 +249,7 @@ public actor CentralManager {
   ///   - `CentralManagerError.notPoweredOn` if the central manager is **not** in the poweredOn state.
   ///   - `CentralManagerError.alreadyScanning` if the central manager is already scanning.
   ///
-  public func scanForPeripherals(withServices services: [CBMUUID]?, options _: [String: Any]? = nil)
+  public func scanForPeripherals(withServices services: [CBUUID]?, options _: [String: Any]? = nil)
     throws -> AsyncStream<Peripheral>
   {
     guard centralManager.state == .poweredOn else {
@@ -280,7 +281,7 @@ public actor CentralManager {
     }
   }
 
-  private var servicesToScanFor: [CBMUUID]?
+  private var servicesToScanFor: [CBUUID]?
 
   /// Scans for peripherals that are advertising services.
   /// Scan will stop when task is canceled, so no need to call `stopScan()`.
@@ -296,7 +297,7 @@ public actor CentralManager {
     throws -> AsyncStream<Peripheral>
   {
     return try scanForPeripherals(
-      withServices: services.map { CBMUUID(nsuuid: $0) }, options: options)
+      withServices: services.map { CBUUID(nsuuid: $0) }, options: options)
   }
 
   /// Asks the central manager to stop scanning for peripherals.
@@ -449,7 +450,7 @@ public actor CentralManager {
   var retreivedPeripherals: [UUID: Peripheral] = [:]
 
   /// Returns a list of known peripherals by their identifiers.
-  public func retrieveConnectedPeripherals(withServices services: [CBMUUID]) async -> [Peripheral] {
+  public func retrieveConnectedPeripherals(withServices services: [CBUUID]) async -> [Peripheral] {
     let cbPeripherals = centralManager.retrieveConnectedPeripherals(withServices: services)
     var peripherals = [Peripheral]()
     for cbPeripheral in cbPeripherals {

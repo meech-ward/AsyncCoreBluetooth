@@ -1,0 +1,102 @@
+@preconcurrency import CoreBluetoothMock
+import Testing
+
+@testable import AsyncCoreBluetooth
+
+@Suite(.serialized) struct DiscoverCharacteristicsTests {
+  var centralManager: CentralManager!
+
+  lazy var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(
+    delegate: MockPeripheral.Delegate(), isKnown: true)
+
+  var peripheral: Peripheral!
+
+  var service: Service!
+
+  init() async throws {
+    CBMCentralManagerMock.simulateInitialState(.poweredOff)
+    CBMCentralManagerMock.simulatePeripherals([mockPeripheral])
+    CBMCentralManagerMock.simulateInitialState(.poweredOn)
+
+    centralManager = CentralManager(forceMock: true)
+    _ = await centralManager.startStream().first(where: { $0 == .poweredOn })
+
+    peripheral = await centralManager.retrievePeripherals(withIdentifiers: [
+      mockPeripheral.identifier
+    ])[0]
+    _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
+
+    let services = await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
+    guard let service = services.first else {
+      Issue.record("couldn't get device")
+      return
+    }
+    self.service = service
+  }
+
+  @Test("Discover services returns services") func test_discoverServices_returnsServices()
+    async throws
+  {
+    let characteristics = await peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service)
+    guard let characteristic = characteristics.first else {
+      Issue.record("couldn't get characteristic")
+      return
+    }
+
+    #expect(await characteristic.uuid == MockPeripheral.UUIDs.Device.characteristic)
+  }
+
+  @Test("Discover characteristics sets the characteristics") func test_discoverServices_setsTheCharacteristics()
+    async throws
+  {
+    let characteristics = await  peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service)
+    guard let characteristic = characteristics.first,
+      let serviceCharacteristic = await service.characteristics?.first,
+      let peripheralStateCharacteristic = await service.state.characteristics?.first
+    else {
+      Issue.record("couldn't get all characteristics")
+      return
+    }
+    #expect(await characteristic === serviceCharacteristic)
+    #expect(await characteristic === peripheralStateCharacteristic)
+  }
+
+  @Test("Discover characteristics references the service")
+  func test_discoverServices_referencesTheService()
+    async throws
+  {
+    let characteristics = await peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service)
+    guard let characteristic = characteristics.first else {
+      Issue.record("couldn't get characteristic")
+      return
+    }
+    #expect(await characteristic.service === service)
+  }
+
+  @Test("Discover characteristics called multiple times back to back returns the same characteristic")
+  func test_discoverCharacteristics_calledMultipleTimesBackToBackReturnsTheSameCharacteristic() async throws {
+    let peripheral = self.peripheral!
+
+    async let characteristicsAsync = [
+      peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service),
+      peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service),
+      peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service),
+      peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service),
+      peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service),
+      peripheral.discoverCharacteristics([MockPeripheral.UUIDs.Device.characteristic], for: service),
+    ]
+    let characteristics = await characteristicsAsync
+    guard let characteristic1 = characteristics[0].first, let characteristic2 = characteristics[1].first,
+      let characteristic3 = characteristics[2].first, let characteristic4 = characteristics[3].first,
+      let characteristic5 = characteristics[4].first, let characteristic6 = characteristics[5].first
+    else {
+      Issue.record("couldn't get characteristics")
+      return
+    }
+    #expect(await characteristic1.uuid == characteristic2.uuid)
+    #expect(await characteristic1.uuid == characteristic3.uuid)
+    #expect(await characteristic1.uuid == characteristic4.uuid)
+    #expect(await characteristic1.uuid == characteristic5.uuid)
+    #expect(await characteristic1.uuid == characteristic6.uuid)
+  }
+}

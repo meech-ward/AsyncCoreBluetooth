@@ -304,3 +304,9 @@ struct PeripheralView: View {
   }
 }
 ```
+
+## Running Tests
+
+```
+swift test --no-parallel
+```

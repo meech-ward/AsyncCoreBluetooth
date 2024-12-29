@@ -6,14 +6,19 @@ class MockPeripheral: @unchecked Sendable {
   enum UUIDs: Sendable {
     enum Device: Sendable {
       static let service = CBUUID(string: "0xFFE0")
+      static let characteristic = CBUUID(string: "0xFFE1")
+      static let descriptor = CBUUID(string: "0xFFE2")
       static let message = UUID(uuidString: "a204a8f0-b16f-4c4e-84d2-59fc3f25962d")!
       static let deviceName = UUID(uuidString: "c9911d6a-08b3-4744-a877-8df12edb4e5e")!
     }
   }
 
-  static let deviceService = CBMServiceMock(type: UUIDs.Device.service, primary: true)
+  static let deviceCharacteristic = CBMCharacteristicMock(type: UUIDs.Device.characteristic, properties: [.read, .write, .notify], descriptors: CBMDescriptorMock(type: UUIDs.Device.descriptor))
+
+  static let deviceService = CBMServiceMock(type: UUIDs.Device.service, primary: true, characteristics: [deviceCharacteristic])
 
   class Delegate: CBMPeripheralSpecDelegate {
+    var readData: Data?
     var peripheralDidReceiveConnectionRequestResult: Result<Void, Error>
     init(peripheralDidReceiveConnectionRequestResult: Result<Void, Error> = .success(())) {
       self.peripheralDidReceiveConnectionRequestResult = peripheralDidReceiveConnectionRequestResult
@@ -21,6 +26,49 @@ class MockPeripheral: @unchecked Sendable {
 
     func peripheralDidReceiveConnectionRequest(_: CBMPeripheralSpec) -> Result<Void, Error> {
       return peripheralDidReceiveConnectionRequestResult
+    }
+    
+    // Read requests
+    func peripheral(_ peripheral: CBMPeripheralSpec, 
+                   didReceiveReadRequestFor characteristic: CBMCharacteristicMock) -> Result<Data, Error> {
+        return .success(readData ?? Data())
+    }
+    
+    func peripheral(_ peripheral: CBMPeripheralSpec, 
+                   didReceiveReadRequestFor descriptor: CBMDescriptorMock) -> Result<Data, Error> {
+        return .success(readData ?? Data())
+    }
+    
+    // Write requests
+    func peripheral(_ peripheral: CBMPeripheralSpec, 
+                   didReceiveWriteRequestFor characteristic: CBMCharacteristicMock, 
+                   data: Data) -> Result<Void, Error> {
+        return .success(())
+    }
+    
+    func peripheral(_ peripheral: CBMPeripheralSpec, 
+                   didReceiveWriteCommandFor characteristic: CBMCharacteristicMock, 
+                   data: Data) {
+        // No return value needed for write without response
+    }
+    
+    func peripheral(_ peripheral: CBMPeripheralSpec, 
+                   didReceiveWriteRequestFor descriptor: CBMDescriptorMock, 
+                   data: Data) -> Result<Void, Error> {
+        return .success(())
+    }
+    
+    // Notification handling
+    func peripheral(_ peripheral: CBMPeripheralSpec, 
+                   didReceiveSetNotifyRequest enabled: Bool, 
+                   for characteristic: CBMCharacteristicMock) -> Result<Void, Error> {
+        return .success(())
+    }
+    
+    func peripheral(_ peripheral: CBMPeripheralSpec, 
+                   didUpdateNotificationStateFor characteristic: CBMCharacteristicMock, 
+                   error: Error?) {
+        // No return value needed
     }
   }
 

@@ -16,6 +16,23 @@ public enum PeripheralConnectionState: Equatable, Sendable {
   case connected
   case disconnecting
   case failedToConnect(CBError)
+
+  /// Returns a string representation of the connection state.
+  /// - Returns: A human-readable string describing the current state.
+  public var description: String {
+    switch self {
+    case .disconnected(let error):
+      return "Disconnected" + (error.map { ": \($0.localizedDescription)" } ?? "")
+    case .connecting:
+      return "Connecting"
+    case .connected:
+      return "Connected" 
+    case .disconnecting:
+      return "Disconnecting"
+    case .failedToConnect(let error):
+      return "Failed to connect: \(error.localizedDescription)"
+    }
+  }
 }
 
 @Observable
@@ -208,34 +225,67 @@ public actor Peripheral {
 
   // MARK: - Discovering Services
 
-  // https://developer.apple.com/documentation/corebluetooth/cbperipheral#1667320
-
-  /// Discovers the specified services of the peripheral.
-  // internally manage the state continuations
-  var discoverServicesContinuations: [UUID: AsyncStream<CBMService>.Continuation] = [:]
-  func setdDiscoverServicesContinuation(
-    id: UUID, continuation: AsyncStream<CBMService>.Continuation?
-  ) {
-    discoverServicesContinuations[id] = continuation
-  }
-
-  var discoverServicesContinuation: CheckedContinuation<[Service], Never>? = nil
-  public func discoverServices(_ serviceUUIDs: [CBUUID]?) async -> [Service] {
-    return await withCheckedContinuation { continuation in
-      discoverServicesContinuation = continuation
-      cbPeripheral.discoverServices(serviceUUIDs)
-    }
-  }
-
-  /// Discovers the specified included services of a previously-discovered service.
-  public func discoverIncludedServices(_ includedServiceUUIDs: [CBUUID]?, for service: Service) {}
-
   /// A list of a peripheral’s discovered services.
   public var services: [Service]? {
     willSet {
       Task { @MainActor in
         state.services = newValue
       }
+    }
+  }
+
+  // https://developer.apple.com/documentation/corebluetooth/cbperipheral#1667320
+
+  /// Discovers the specified services of the peripheral.
+  // internally manage the state continuations
+  var discoverServicesContinuations: [CheckedContinuation<[Service], Never>] = []
+  @discardableResult
+  public func discoverServices(_ serviceUUIDs: [CBUUID]?) async -> [Service] {
+    return await withCheckedContinuation { continuation in
+      discoverServicesContinuations.append(continuation)
+      cbPeripheral.discoverServices(serviceUUIDs)
+    }
+  }
+
+  public func discoverServices(serviceUUIDs: [UUID]?) async -> [Service] {
+    return await discoverServices(serviceUUIDs?.map { CBUUID(nsuuid: $0) })
+  }
+
+  /// Discovers the specified included services of a previously-discovered service.
+  public func discoverIncludedServices(_ includedServiceUUIDs: [CBUUID]?, for service: Service) {}
+
+  // MARK: - Discovering Characteristics
+
+  var discoverCharacteristicsContinuations:
+    [CBUUID: [CheckedContinuation<[Characteristic], Never>]] = [:]
+
+  @discardableResult
+  public func discoverCharacteristics(
+    _ characteristicUUIDs: [CBUUID]?,
+    for service: Service
+  ) async -> [Characteristic] {
+    return await withCheckedContinuation { continuation in
+      if discoverCharacteristicsContinuations[service.uuid] == nil {
+        discoverCharacteristicsContinuations[service.uuid] = []
+      }
+      discoverCharacteristicsContinuations[service.uuid]?.append(continuation)
+      cbPeripheral.discoverCharacteristics(characteristicUUIDs, for: service.service)
+    }
+  }
+
+  var readCharacteristicValueContinuations: [CBUUID: [CheckedContinuation<Data?, Error>]] = [:]
+}
+
+// MARK: - Read, Write, Notify
+extension Peripheral {
+  @discardableResult
+  public func readValue(for characteristic: Characteristic) async throws -> Data? {
+    return try await withCheckedThrowingContinuation { continuation in
+      if readCharacteristicValueContinuations[characteristic.uuid] == nil {
+        readCharacteristicValueContinuations[characteristic.uuid] = []
+      }
+      readCharacteristicValueContinuations[characteristic.uuid]?.append(continuation)
+      cbPeripheral.readValue(for: characteristic.characteristic)
     }
   }
 }

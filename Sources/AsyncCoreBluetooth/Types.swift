@@ -23,7 +23,6 @@ public typealias PeripheralBLEState = CBMPeripheralState
 // public class Service: CBMService, Identifiable, Sendable {
 //   public let identifier: UUID
 // }
-public typealias Characteristic = CBMCharacteristic
 public typealias Descriptor = CBMDescriptor
 
 public enum CentralManagerError: Error {
