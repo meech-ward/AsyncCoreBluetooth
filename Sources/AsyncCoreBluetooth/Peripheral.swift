@@ -1,5 +1,6 @@
 @preconcurrency import CoreBluetooth
 @preconcurrency import CoreBluetoothMock
+import DequeModule
 import Foundation
 
 /// The possible states of a peripheral connection.
@@ -26,7 +27,7 @@ public enum PeripheralConnectionState: Equatable, Sendable {
     case .connecting:
       return "Connecting"
     case .connected:
-      return "Connected" 
+      return "Connected"
     case .disconnecting:
       return "Disconnecting"
     case .failedToConnect(let error):
@@ -273,7 +274,9 @@ public actor Peripheral {
     }
   }
 
-  var readCharacteristicValueContinuations: [CBUUID: [CheckedContinuation<Data?, Error>]] = [:]
+  var readCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Data?, Error>>] = [:]
+  var writeCharacteristicWithResponseContinuations: Deque<CheckedContinuation<Void, any Error>> =
+    Deque<CheckedContinuation<Void, Error>>()
 }
 
 // MARK: - Read, Write, Notify
@@ -282,11 +285,29 @@ extension Peripheral {
   public func readValue(for characteristic: Characteristic) async throws -> Data? {
     return try await withCheckedThrowingContinuation { continuation in
       if readCharacteristicValueContinuations[characteristic.uuid] == nil {
-        readCharacteristicValueContinuations[characteristic.uuid] = []
+        readCharacteristicValueContinuations[characteristic.uuid] = Deque<
+          CheckedContinuation<Data?, Error>
+        >()
       }
       readCharacteristicValueContinuations[characteristic.uuid]?.append(continuation)
       cbPeripheral.readValue(for: characteristic.characteristic)
     }
+  }
+
+  public func writeValueWithResponse(
+    _ value: Data, for characteristic: Characteristic
+  ) async throws {
+    return try await withCheckedThrowingContinuation { continuation in
+      writeCharacteristicWithResponseContinuations.append(continuation)
+      cbPeripheral.writeValue(value, for: characteristic.characteristic, type: .withResponse)
+    }
+  }
+
+  /// Writes a value to a characteristic without waiting for a response.
+  public func writeValueWithoutResponse(
+    _ value: Data, for characteristic: Characteristic
+  ) {
+    cbPeripheral.writeValue(value, for: characteristic.characteristic, type: .withoutResponse)
   }
 }
 

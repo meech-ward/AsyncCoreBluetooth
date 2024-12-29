@@ -1,4 +1,5 @@
 @preconcurrency import CoreBluetoothMock
+import DequeModule
 import Foundation
 
 // CBMPeripheralDelegate
@@ -76,35 +77,38 @@ extension Peripheral {
     _ cbPeripheral: CBMPeripheral, didUpdateValueFor cbCharacteristic: CBMCharacteristic,
     error: Error?
   ) async {
-    defer {
-      readCharacteristicValueContinuations[cbCharacteristic.uuid] = []
-    }
-    delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: error)
 
-    if let error {
-      readCharacteristicValueContinuations[cbCharacteristic.uuid]?.forEach {
-        $0.resume(throwing: error)
-      }
-      return
-    }
-
-    readCharacteristicValueContinuations[cbCharacteristic.uuid]?.forEach {
-      $0.resume(with: Result.success(cbCharacteristic.value))
-    }
-
+    let continuation = readCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
     let service = services?.first(where: { $0.uuid == cbCharacteristic.service?.uuid })
     let characteristic = await service?.characteristics?.first(where: {
       $0.uuid == cbCharacteristic.uuid
     })
     await characteristic?.setValue(cbCharacteristic.value)
+
+    delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: error)
+
+    guard let continuation else {
+      return
+    }
+    if let error {
+      continuation.resume(throwing: error)
+      return
+    }
+    continuation.resume(with: Result.success(cbCharacteristic.value))
   }
 
   func peripheral(
     _ cbPeripheral: CBMPeripheral, didWriteValueFor characteristic: CBMCharacteristic, error: Error?
   ) {
-    print(
-      "peripheral \(cbPeripheral) didWriteValueFor \(characteristic) error \(String(describing: error))"
-    )
+    delegate?.peripheral(cbPeripheral, didWriteValueFor: characteristic, error: error)
+
+    guard !writeCharacteristicWithResponseContinuations.isEmpty else { return }
+    let continuation = writeCharacteristicWithResponseContinuations.popFirst()!
+    if let error {
+      continuation.resume(throwing: error)
+    } else {
+      continuation.resume()
+    }
   }
 
   func peripheral(
@@ -142,7 +146,7 @@ extension Peripheral {
   }
 
   func peripheralIsReady(toSendWriteWithoutResponse cbPeripheral: CBMPeripheral) {
-    print("peripheralIsReadyToSendWriteWithoutResponse \(cbPeripheral)")
+    delegate?.peripheralIsReady(toSendWriteWithoutResponse: cbPeripheral)
   }
 
   func peripheral(_ cbPeripheral: CBMPeripheral, didOpen channel: CBML2CAPChannel?, error: Error?) {
@@ -273,7 +277,6 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   func peripheralIsReadyToSendWriteWithoutResponse(_ cbPeripheral: CBMPeripheral) {
     Task {
       await peripheral.peripheralIsReady(toSendWriteWithoutResponse: cbPeripheral)
-      await peripheral.delegate?.peripheralIsReady(toSendWriteWithoutResponse: cbPeripheral)
     }
   }
 

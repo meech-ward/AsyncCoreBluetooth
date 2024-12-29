@@ -17,7 +17,7 @@ let package = Package(
     .library(
       name: "AsyncCoreBluetooth",
       targets: ["AsyncCoreBluetooth"]
-    ),
+    )
   ],
   dependencies: [
     // Dependencies declare other packages that this package depends on.
@@ -25,6 +25,10 @@ let package = Package(
     .package(url: "https://github.com/meech-ward/IOS-CoreBluetooth-Mock.git", branch: "main"),
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.1.0"),
+    .package(
+      url: "https://github.com/apple/swift-collections.git",
+      .upToNextMinor(from: "1.1.0")
+    ),
   ],
   targets: [
     // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -34,6 +38,7 @@ let package = Package(
       dependencies: [
         .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
         .product(name: "CoreBluetoothMock", package: "IOS-CoreBluetooth-Mock"),
+        .product(name: "DequeModule", package: "swift-collections"),
       ]
     ),
     .testTarget(
@@ -42,6 +47,7 @@ let package = Package(
         "AsyncCoreBluetooth",
         .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
         .product(name: "CoreBluetoothMock", package: "IOS-CoreBluetooth-Mock"),
+        .product(name: "DequeModule", package: "swift-collections"),
       ]
     ),
   ]
