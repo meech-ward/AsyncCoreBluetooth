@@ -5,17 +5,22 @@ import Foundation
 // CBMCentralManagerDelegate
 extension CentralManager {
   func centralManagerDidUpdateState(_ central: CBMCentralManager) async {
-    await MainActor.run {
-      centralManagerState.bleState = central.state
-    }
-    stateContinuations.values.forEach { $0.yield(central.state) }
+    bleState = central.state
+    stateContinuations.values.forEach { $0.yield(bleState) }
+
+    delegate?.centralManagerDidUpdateState(central)
   }
 
   func centralManager(_ central: CBMCentralManager, willRestoreState dict: [String: Any]) {
     print("centralManager \(central) willRestoreState \(dict). Not yet implemented.")
   }
 
-  func centralManager(_: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData _: [String: Any], rssi _: NSNumber) async {
+  func centralManager(_ central: CBMCentralManager, didDiscover peripheralWrapper: PeripheralWrapper, advertisementData: [AdvertisementDataValue], rssi RSSI: NSNumber) async {
+    let cbPeripheral = peripheralWrapper.peripheral
+    let originalFormatAdvertisementData: [String: Any] = Dictionary(
+      uniqueKeysWithValues: advertisementData.map { ($0.key, $0.originalValue) }
+    )
+    delegate?.centralManager(central, didDiscover: cbPeripheral, advertisementData: originalFormatAdvertisementData, rssi: RSSI)
     guard let scanForPeripheralsContinuation = scanForPeripheralsContinuation else {
       return
     }
@@ -23,23 +28,24 @@ extension CentralManager {
     scanForPeripheralsContinuation.yield(p)
   }
 
-  func centralManager(_: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
+  func centralManager(_ central: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) async {
+    delegate?.centralManager(central, didConnect: cbPeripheral)
     print(cbPeripheral.identifier, "didConnect")
-    let state: Peripheral.ConnectionState = .connected
+    let state: PeripheralConnectionState = .connected
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_: CBMCentralManager, didFailToConnect cbPeripheral: CBMPeripheral, error: Error?) async {
     print(cbPeripheral.identifier, "didFailToConnect", error ?? "")
     let error = error as? CBMError ?? CBMError(.unknown)
-    let state: Peripheral.ConnectionState = .failedToConnect(error)
+    let state: PeripheralConnectionState = .failedToConnect(error)
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
   func centralManager(_: CBMCentralManager, didDisconnectPeripheral cbPeripheral: CBMPeripheral, error: Error?) async {
     print(cbPeripheral.identifier, "didDisconnectPeripheral", error ?? "")
     let error = error as? CBMError
-    let state: Peripheral.ConnectionState = .disconnected(error)
+    let state: PeripheralConnectionState = .disconnected(error)
     await updatePeripheralConnectionState(peripheralUUID: cbPeripheral.identifier, state: state)
   }
 
@@ -56,7 +62,7 @@ extension CentralManager {
   }
 }
 
-class CentralManagerDelegate: NSObject, CBMCentralManagerDelegate {
+class CentralManagerDelegate: NSObject, CBMCentralManagerDelegate, @unchecked Sendable {
   let centralManager: CentralManager
   init(centralManager: CentralManager) {
     self.centralManager = centralManager
@@ -65,28 +71,35 @@ class CentralManagerDelegate: NSObject, CBMCentralManagerDelegate {
   func centralManagerDidUpdateState(_ central: CBMCentralManager) {
     Task {
       await centralManager.centralManagerDidUpdateState(central)
-      await centralManager.delegate?.centralManagerDidUpdateState(central)
     }
   }
 
-  func centralManager(_ central: CBMCentralManager, willRestoreState dict: [String: Any]) {
-    Task {
-      await centralManager.centralManager(central, willRestoreState: dict)
-      await centralManager.delegate?.centralManager(central, willRestoreState: dict)
+  func centralManager(_: CBMCentralManager, willRestoreState dict: [String: Any]) {
+    print(dict)
+//    Task {
+//      let d = dict
+//      await centralManager.centralManager(central, willRestoreState: d)
+//      await centralManager.delegate?.centralManager(central, willRestoreState: d)
+//    }
+  }
+
+  private func parseAdvertisementData(_ advertisementData: [String: Any]) -> [AdvertisementDataValue] {
+    return advertisementData.compactMap { value in
+      AdvertisementDataValue(key: value.key, value: value.value)
     }
   }
 
   func centralManager(_ central: CBMCentralManager, didDiscover cbPeripheral: CBMPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+    let adData = parseAdvertisementData(advertisementData)
+    let wrapper = PeripheralWrapper(peripheral: cbPeripheral)
     Task {
-      await centralManager.centralManager(central, didDiscover: cbPeripheral, advertisementData: advertisementData, rssi: RSSI)
-      await centralManager.delegate?.centralManager(central, didDiscover: cbPeripheral, advertisementData: advertisementData, rssi: RSSI)
+      await centralManager.centralManager(central, didDiscover: wrapper, advertisementData: adData, rssi: RSSI)
     }
   }
 
   func centralManager(_ central: CBMCentralManager, didConnect cbPeripheral: CBMPeripheral) {
     Task {
       await centralManager.centralManager(central, didConnect: cbPeripheral)
-      await centralManager.delegate?.centralManager(central, didConnect: cbPeripheral)
     }
   }
 

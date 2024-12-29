@@ -2,9 +2,9 @@ import CoreBluetooth
 import CoreBluetoothMock
 import Foundation
 
-class MockPeripheral {
-  enum UUIDs {
-    enum Device {
+class MockPeripheral: @unchecked Sendable {
+  enum UUIDs: Sendable {
+    enum Device: Sendable {
       static let service = CBUUID(string: "0xFFE0")
       static let message = UUID(uuidString: "a204a8f0-b16f-4c4e-84d2-59fc3f25962d")!
       static let deviceName = UUID(uuidString: "c9911d6a-08b3-4744-a877-8df12edb4e5e")!

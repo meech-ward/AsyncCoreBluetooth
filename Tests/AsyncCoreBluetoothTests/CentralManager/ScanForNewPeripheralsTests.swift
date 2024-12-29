@@ -1,99 +1,112 @@
 @testable import AsyncCoreBluetooth
 import CoreBluetoothMock
-import XCTest
+import Testing
 
-final class ScanForNewDevicesTests: XCTestCase, XCTestObservation {
+@Suite(.serialized) struct ScanForNewPeripheralsTests {
   var centralManager: CentralManager!
 
-  lazy var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate())
-  lazy var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate())
+  var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(
+    delegate: MockPeripheral.Delegate())
+  var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(
+    delegate: MockPeripheral.Delegate())
 
-  override func setUp() async throws {
+  init() async throws {
     CBMCentralManagerMock.simulateInitialState(.poweredOff)
     CBMCentralManagerMock.simulatePeripherals([mockPeripheral, mockPeripheral2])
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
     centralManager = CentralManager(forceMock: true)
-    for await state in await centralManager.start() {
+    for await state in await centralManager.startStream() {
       if state == .poweredOn {
         break
       }
     }
   }
 
-  override func tearDown() {
-    centralManager = nil
-  }
-
-  func test_scan_returnsDevices() async throws {
-    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+  @Test("Scan returns devices")
+  func testScanReturnsDevices() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [
+      MockPeripheral.UUIDs.Device.service
+    ])
     for await device in devices {
       let id = await device.identifier
-      XCTAssertEqual(id, mockPeripheral.identifier)
+      #expect(id == mockPeripheral.identifier)
       break
     }
     for await device in devices {
       let id = await device.identifier
-      XCTAssertEqual(id, mockPeripheral2.identifier)
+      #expect(id == mockPeripheral2.identifier)
       break
     }
   }
 
-  func test_scan_throwsWhenCalledMultipleTimes() async throws {
-    do {
+  @Test("Scan throws when called multiple times")
+  func testScanThrowsWhenCalledMultipleTimes() async throws {
+    let service = MockPeripheral.UUIDs.Device.service
+    let centralManager = self.centralManager!
+    
+    await #expect(throws: CentralManagerError.alreadyScanning.self) {
       try await withThrowingTaskGroup(of: Void.self) { group in
         group.addTask {
-          _ = try await self.centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+          _ = try await centralManager.scanForPeripherals(withServices: [service])
         }
         group.addTask {
-          _ = try await self.centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
+          _ = try await centralManager.scanForPeripherals(withServices: [service])
         }
         try await group.next()
-        try await group.next()
+        try await group.next()  
       }
-      XCTFail("Didn't throw")
-    } catch {
-      print(error)
-      XCTAssertNotNil(error)
     }
   }
 
-  func test_scan_throwsWhenDeviceNotPoweredOn() async throws {
+  @Test("Scan throws when device not powered on")
+  func testScanThrowsWhenDeviceNotPoweredOn() async throws {
     CBMCentralManagerMock.simulateInitialState(.poweredOff)
-    do {
-      _ = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
-      XCTFail("Didn't throw")
-    } catch {
-      print(error)
-      XCTAssertNotNil(error)
+    await #expect(throws: Error.self) {
+      _ = try await centralManager.scanForPeripherals(withServices: [
+        MockPeripheral.UUIDs.Device.service
+      ])
     }
   }
 
-  func test_scan_endsScanWhenTaskIsCanceled() async throws {
+  @Test("Scan ends when task is canceled")
+  func testScanEndsWhenTaskIsCanceled() async throws {
     func assertAllScanning(_ expectedState: Bool = false) async throws {
       try await Task.sleep(nanoseconds: 1)
       try await Task.sleep(nanoseconds: 1)
+      
       // Internal State
-      let internalIsScanning = await centralManager.internalIsScanning
-      XCTAssertEqual(internalIsScanning, expectedState, "internalIsScanning should be \(expectedState)")
+      let internalIsScanning = await centralManager.isScanning
+      #expect(
+        internalIsScanning == expectedState,
+        "internalIsScanning should be \(expectedState)"
+      )
 
       // Core Bluetooth state
       let isScanningCoreBLE = await centralManager.centralManager.isScanning
-      XCTAssertEqual(isScanningCoreBLE, expectedState, "isScanningCoreBLE should be \(expectedState)")
+      #expect(
+        isScanningCoreBLE == expectedState,
+        "isScanningCoreBLE should be \(expectedState)"
+      )
 
       try await Task.sleep(nanoseconds: 1)
       // Public published state
       let isScanning = await centralManager.isScanning
-      XCTAssertEqual(isScanning, expectedState, "isScanning should be \(expectedState)")
+      #expect(
+        isScanning == expectedState,
+        "isScanning should be \(expectedState)"
+      )
     }
 
     // false before scanning
     try await assertAllScanning(false)
 
     // true while scanning
-    for await device in try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service]) {
+    for await device in try await centralManager.scanForPeripherals(withServices: [
+      MockPeripheral.UUIDs.Device.service
+    ]) {
       let id = await device.identifier
-      XCTAssertEqual(id, mockPeripheral.identifier)
+      #expect(id == mockPeripheral.identifier)
       try await assertAllScanning(true)
       break
     }

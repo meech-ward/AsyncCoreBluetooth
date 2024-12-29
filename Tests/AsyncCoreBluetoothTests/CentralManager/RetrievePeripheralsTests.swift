@@ -1,62 +1,82 @@
-@testable import AsyncCoreBluetooth
 import CoreBluetoothMock
-import XCTest
+import Testing
 
-final class RetrievePeripheralsTests: XCTestCase, XCTestObservation {
+@testable import AsyncCoreBluetooth
+
+@Suite(.serialized) struct RetrievePeripheralsTests {
   var centralManager: CentralManager!
 
-  lazy var mockPeripheral1: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate(), isKnown: true)
-  lazy var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate(), isKnown: true)
-  lazy var mockPeripheral3: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate(), isKnown: false)
+  var mockPeripheral1: CBMPeripheralSpec = MockPeripheral.makeDevice(
+    delegate: MockPeripheral.Delegate(), isKnown: true)
+  var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(
+    delegate: MockPeripheral.Delegate(), isKnown: true)
+  var mockPeripheral3: CBMPeripheralSpec = MockPeripheral.makeDevice(
+    delegate: MockPeripheral.Delegate(), isKnown: false)
 
-  override func setUp() async throws {
+  init() async throws {
     CBMCentralManagerMock.simulateInitialState(.poweredOff)
     CBMCentralManagerMock.simulatePeripherals([mockPeripheral1, mockPeripheral2, mockPeripheral3])
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
     centralManager = CentralManager(forceMock: true)
-    for await state in await centralManager.start() {
+    for await state in await centralManager.startStream() {
       if state == .poweredOn {
         break
       }
     }
   }
 
-  override func tearDown() {
-    centralManager = nil
+  @Test("Returns the peripherals when retrieving with identifiers")
+  func testReturnsThePeripherals() async throws {
+    let devices = await centralManager.retrievePeripherals(withIdentifiers: [
+      mockPeripheral1.identifier, mockPeripheral2.identifier,
+    ])
+    #expect(devices.count == 2)
   }
 
-  func test_retrievePeripheralsWithIdentifiers_returnsThePeripherals() async throws {
-    let devices = await centralManager.retrievePeripherals(withIdentifiers: [mockPeripheral1.identifier, mockPeripheral2.identifier])
-    XCTAssertEqual(devices.count, 2)
+  @Test("Returns the same peripherals each time when retrieving with identifiers")
+  func testReturnsSamePeripheralsEachTime() async throws {
+    let devicesOne = await centralManager.retrievePeripherals(withIdentifiers: [
+      mockPeripheral1.identifier, mockPeripheral2.identifier,
+    ])
+    let devicesTwo = await centralManager.retrievePeripherals(withIdentifiers: [
+      mockPeripheral1.identifier, mockPeripheral2.identifier,
+    ])
+    #expect(devicesOne[0] === devicesTwo[0])
+    #expect(devicesOne[1] === devicesTwo[1])
   }
 
-  func test_retrievePeripheralsWithIdentifiers_returnsTheSamePeripheralsEachTime() async throws {
-    let devicesOne = await centralManager.retrievePeripherals(withIdentifiers: [mockPeripheral1.identifier, mockPeripheral2.identifier])
-    let devicesTwo = await centralManager.retrievePeripherals(withIdentifiers: [mockPeripheral1.identifier, mockPeripheral2.identifier])
-    XCTAssertIdentical(devicesOne[0], devicesTwo[0])
-    XCTAssertIdentical(devicesOne[1], devicesTwo[1])
-  }
-
-  func test_retrievePeripheralsWithIdentifiers_returnsTheSamePeripheralsFromScanningAndConnecting() async throws {
-    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
-    guard let device = await devices.first(where: { await $0.identifier == mockPeripheral3.identifier }) else {
-      XCTFail("couldn't get device")
+  @Test("Returns the same peripherals from scanning and connecting")
+  func testReturnsSamePeripheralsFromScanningAndConnecting() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [
+      MockPeripheral.UUIDs.Device.service
+    ])
+    guard
+      let device = await devices.first(where: { await $0.identifier == mockPeripheral3.identifier })
+    else {
+      Issue.record("couldn't get device")
       return
     }
 
     _ = try await centralManager.connect(device).first(where: { $0 == .connected })
 
-    let retrievedDevices = await centralManager.retrievePeripherals(withIdentifiers: [mockPeripheral3.identifier])
+    let retrievedDevices = await centralManager.retrievePeripherals(withIdentifiers: [
+      mockPeripheral3.identifier
+    ])
 
-    XCTAssertEqual(retrievedDevices.count, 1)
-    XCTAssertIdentical(retrievedDevices[0], device)
+    #expect(retrievedDevices.count == 1)
+    #expect(retrievedDevices[0] === device)
   }
 
-  func test_retrievePeripheralsWithIdentifiers_respondsToSameEventsAsScanningAndConnecting1() async throws {
-    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
-    guard let device = await devices.first(where: { await $0.identifier == mockPeripheral3.identifier }) else {
-      XCTFail("couldn't get device")
+  @Test("Responds to same events as scanning and connecting - disconnect test")
+  func testRespondsToSameEventsAsScanningAndConnecting1() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [
+      MockPeripheral.UUIDs.Device.service
+    ])
+    guard
+      let device = await devices.first(where: { await $0.identifier == mockPeripheral3.identifier })
+    else {
+      Issue.record("couldn't get device")
       return
     }
 
@@ -67,17 +87,24 @@ final class RetrievePeripheralsTests: XCTestCase, XCTestObservation {
       }
     }
 
-    let retrievedDevices = await centralManager.retrievePeripherals(withIdentifiers: [mockPeripheral3.identifier])
+    let retrievedDevices = await centralManager.retrievePeripherals(withIdentifiers: [
+      mockPeripheral3.identifier
+    ])
 
     try await centralManager.cancelPeripheralConnection(retrievedDevices[0])
     let state = await connectionStates.first(where: { _ in true })
-    XCTAssertEqual(state, .disconnecting)
+    #expect(state == .disconnecting)
   }
 
-  func test_retrievePeripheralsWithIdentifiers_respondsToSameEventsAsScanningAndConnecting2() async throws {
-    let devices = try await centralManager.scanForPeripherals(withServices: [MockPeripheral.UUIDs.Device.service])
-    guard let device = await devices.first(where: { await $0.identifier == mockPeripheral3.identifier }) else {
-      XCTFail("couldn't get device")
+  @Test("Responds to same events as scanning and connecting - error test")
+  func testRespondsToSameEventsAsScanningAndConnecting2() async throws {
+    let devices = try await centralManager.scanForPeripherals(withServices: [
+      MockPeripheral.UUIDs.Device.service
+    ])
+    guard
+      let device = await devices.first(where: { await $0.identifier == mockPeripheral3.identifier })
+    else {
+      Issue.record("couldn't get device")
       return
     }
 
@@ -88,13 +115,17 @@ final class RetrievePeripheralsTests: XCTestCase, XCTestObservation {
       }
     }
 
-    let retrievedDevices = await centralManager.retrievePeripherals(withIdentifiers: [mockPeripheral3.identifier])
+    let retrievedDevices = await centralManager.retrievePeripherals(withIdentifiers: [
+      mockPeripheral3.identifier
+    ])
 
     async let state1 = connectionStates.first(where: { _ in true })
-    async let state2 = await centralManager.connectionState(forPeripheral: retrievedDevices[0]).dropFirst().first(where: { _ in true })
+    let state2a = await centralManager.connectionState(forPeripheral: retrievedDevices[0])
+      .dropFirst()
+    async let state2 = await state2a.first(where: { _ in true })
     mockPeripheral3.simulateDisconnection(withError: CBMError(.peripheralDisconnected))
     for state in await [state1, state2] {
-      XCTAssertEqual(state, .disconnected(CBMError(.peripheralDisconnected)))
+      #expect(state == .disconnected(CBMError(.peripheralDisconnected)))
     }
   }
 }

@@ -1,3 +1,4 @@
+@preconcurrency
 import CoreBluetoothMock
 import Foundation
 
@@ -5,6 +6,7 @@ import Foundation
 extension Peripheral {
   func peripheralDidUpdateName(_ cbPeripheral: CBMPeripheral) {
     print("peripheralDidUpdateName \(cbPeripheral)")
+    delegate?.peripheralDidUpdateName(cbPeripheral)
   }
 
   func peripheral(_ cbPeripheral: CBMPeripheral, didModifyServices invalidatedServices: [CBMService]) {
@@ -15,10 +17,19 @@ extension Peripheral {
     print("peripheral \(cbPeripheral) didReadRSSI \(RSSI) error \(String(describing: error))")
   }
 
-  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) {
-    guard let services = cbPeripheral.services else {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) async {
+    guard let cbServices = cbPeripheral.services else {
       return
     }
+    var services = [Service]()
+    for cbService in cbServices {
+      let service = await Service(service: cbService)
+      services.append(service)
+    }
+    delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
+
+    discoverServicesContinuation?.resume(with: Result.success(services))
+
     print("peripheral \(cbPeripheral) didDiscoverServices \(String(describing: error))")
     print(services)
     print(services.map { $0.uuid })
@@ -62,10 +73,11 @@ extension Peripheral {
 
   func peripheral(_ cbPeripheral: CBMPeripheral, didOpen channel: CBML2CAPChannel?, error: Error?) {
     print("peripheral \(cbPeripheral) didOpen \(String(describing: channel)) error \(String(describing: error))")
+    delegate?.peripheral(cbPeripheral, didOpen: channel, error: error)
   }
 }
 
-class PeripheralDelegate: NSObject, CBMPeripheralDelegate {
+class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   let peripheral: Peripheral
   init(peripheral: Peripheral) {
     self.peripheral = peripheral
@@ -74,7 +86,6 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate {
   func peripheralDidUpdateName(_ cbPeripheral: CBMPeripheral) {
     Task {
       await peripheral.peripheralDidUpdateName(cbPeripheral)
-      await await peripheral.delegate?.peripheralDidUpdateName(cbPeripheral)
     }
   }
 
@@ -95,7 +106,6 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate {
   func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) {
     Task {
       await peripheral.peripheral(cbPeripheral, didDiscoverServices: error)
-      await peripheral.delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
     }
   }
 
@@ -165,7 +175,6 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate {
   func peripheral(_ cbPeripheral: CBMPeripheral, didOpen channel: CBML2CAPChannel?, error: Error?) {
     Task {
       await peripheral.peripheral(cbPeripheral, didOpen: channel, error: error)
-      await peripheral.delegate?.peripheral(cbPeripheral, didOpen: channel, error: error)
     }
   }
 }

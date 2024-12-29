@@ -1,6 +1,5 @@
-import AsyncAlgorithms
-@preconcurrency
-import CoreBluetoothMock
+//import AsyncAlgorithms
+@preconcurrency import CoreBluetoothMock
 import Foundation
 
 /// This class wraps the `CBMCentralManager` class and provides an async interface for interacting with it.
@@ -14,7 +13,7 @@ import Foundation
 ///
 /// let centralManager = CentralManager()
 ///
-/// for await bleState in await centralManager.start() {
+/// for await bleState in await centralManager.startStream() {
 ///   switch bleState {
 ///     case .unknown:
 ///       print("Unkown")
@@ -40,8 +39,28 @@ import Foundation
 
 @Observable
 public class CentralManagerState {
-  var bleState: CentralManagerBLEState = .unknown
-  var isScanning = false
+  public var bleState: CentralManagerBLEState = .unknown
+
+  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667498
+
+  /// A flag to determine whether the central manager is currently scanning for peripherals.
+  ///
+  /// This is a published property, so you can use this in SwiftUI to inform the user of the current scanning state.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// let centralManager = CentralManager()
+  /// var body: some View {
+  ///  VStack {
+  ///   if centralManager.state.isScanning {
+  ///      Text("Scanning")
+  ///    } else {
+  ///      Text("Not Scanning")
+  ///    }
+  ///  }
+  /// }
+  /// ```
+  public var isScanning = false
 }
 
 public actor CentralManager {
@@ -64,10 +83,36 @@ public actor CentralManager {
   /// The underlying ``CBMCentralManager`` instance.
   ///
   /// Avoid using this if you can. It's been left public in case this library missed some functionality that is only available in the underlying ``CBMCentralManager``.
-  public lazy var centralManager: CBMCentralManager = CBMCentralManagerFactory.instance(delegate: centralManagerDelegate,
-                                                                                        queue: queue,
-                                                                                        options: options,
-                                                                                        forceMock: forceMock)
+  public lazy var centralManager: CBMCentralManager = CBMCentralManagerFactory.instance(
+    delegate: centralManagerDelegate,
+    queue: queue,
+    options: options,
+    forceMock: forceMock)
+
+  // CentralManagerState
+  var bleState: CentralManagerBLEState = .unknown {
+    willSet {
+      Task { @MainActor in
+        state.bleState = newValue
+      }
+    }
+  }
+
+  func setBLEState(_ state: CentralManagerBLEState) {
+    bleState = state
+  }
+
+  var isScanning = false {
+    willSet {
+      Task { @MainActor in
+        state.isScanning = newValue
+      }
+    }
+  }
+
+  func setIsScanning(_ state: Bool) {
+    isScanning = state
+  }
 
   /// Initializes the central manager with optional parameters, but you probably don't need to pass in any of them. Just call `CentralManager()`
   ///
@@ -76,7 +121,10 @@ public actor CentralManager {
   ///   - queue: An optional dispatch queue for delegate callbacks.
   ///   - options: An optional dictionary containing options for the central manager.
   ///   - forceMock: A flag to determine whether to use a mock central manager.
-  public init(delegate: CBMCentralManagerDelegate? = nil, queue: DispatchQueue? = nil, options: [String: Any]? = nil, forceMock: Bool = false) {
+  public init(
+    delegate: CBMCentralManagerDelegate? = nil, queue: DispatchQueue? = nil,
+    options: [String: Any]? = nil, forceMock: Bool = false
+  ) {
     self.delegate = delegate
     self.queue = queue
     self.options = options
@@ -91,7 +139,7 @@ public actor CentralManager {
   ///
   /// Example Usage:
   /// ```swift
-  ///  @StateObject var centralManager = CentralManager()
+  ///  var centralManager = CentralManager()
   ///  var body: some View {
   ///    VStack {
   ///      switch centralManager.bleState {
@@ -111,11 +159,11 @@ public actor CentralManager {
   ///    }
   ///  }
   /// ```
-  @MainActor public internal(set) var centralManagerState = CentralManagerState()
+  @MainActor public internal(set) var state = CentralManagerState()
 
   // internally manage the state continuations
-  var stateContinuations: [UUID: AsyncStream<CentralManagerBLEState>.Continuation] = [:]
-  func setStateContinuation(id: UUID, continuation: AsyncStream<CentralManagerBLEState>.Continuation?) {
+  var stateContinuations: [UUID: AsyncStream<CBMManagerState>.Continuation] = [:]
+  func setStateContinuation(id: UUID, continuation: AsyncStream<CBMManagerState>.Continuation?) {
     stateContinuations[id] = continuation
   }
 
@@ -125,11 +173,9 @@ public actor CentralManager {
   ///
   /// This function retrieves the state from the underlying central manager and updates the published `bleState` property.
   /// You can also monitor the state changes using an async stream by calling the other `start() -> AsyncStream<CentralManagerState>` method
-  public func start() async {
-    let state = centralManagerBLEState()
-    await MainActor.run {
-      centralManagerState.bleState = state
-    }
+  public func start() {
+    // because it's lazy, this will also trigger the central being started
+    bleState = centralManager.state
   }
 
   /// Starts the central manager and starts monitoring the `CentralManagerState` changes.
@@ -148,18 +194,18 @@ public actor CentralManager {
   /// ```
   ///
   /// - Returns: an async stream that represents the up to date CentralManagerState
-  public func start() -> AsyncStream<CentralManagerBLEState> {
+  @discardableResult
+  public func startStream() -> AsyncStream<CBMManagerState> {
     return AsyncStream { [weak self] continuation in
       guard let self = self else { return }
 
       let id = UUID()
       Task {
         await self.setStateContinuation(id: id, continuation: continuation)
-        let state = await self.centralManagerBLEState()
+        // because it's lazy, this will also trigger the central being started
+        let state = await centralManager.state
         continuation.yield(state)
-        await MainActor.run {
-          self.centralManagerState.bleState = state
-        }
+        await setBLEState(state)
       }
 
       continuation.onTermination = { @Sendable [weak self] _ in
@@ -173,39 +219,11 @@ public actor CentralManager {
 
   // MARK: - Scanning or Stopping Scans of Peripherals
 
-  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667498
-
-  /// A flag to determine whether the central manager is currently scanning for peripherals.
-  ///
-  /// This is a published property, so you can use this in SwiftUI to inform the user of the current scanning state.
-  ///
-  /// Example Usage:
-  /// ```swift
-  /// @StateObject var centralManager = CentralManager()
-  /// var body: some View {
-  ///  VStack {
-  ///   if centralManager.isScanning {
-  ///      Text("Scanning")
-  ///    } else {
-  ///      Text("Not Scanning")
-  ///    }
-  ///  }
-  /// }
-  /// ```
-  @Published @MainActor public private(set) var isScanning = false
-  private(set) var internalIsScanning = false {
-    willSet {
-      Task {
-        await MainActor.run {
-          isScanning = newValue
-        }
-      }
-    }
-  }
-
   // internally manage the state continuations
   var scanForPeripheralsContinuation: AsyncStream<Peripheral>.Continuation?
-  func setScanForPeripheralsContinuation(_ scanForPeripheralsContinuation: AsyncStream<Peripheral>.Continuation?) {
+  func setScanForPeripheralsContinuation(
+    _ scanForPeripheralsContinuation: AsyncStream<Peripheral>.Continuation?
+  ) {
     self.scanForPeripheralsContinuation = scanForPeripheralsContinuation
   }
 
@@ -229,22 +247,26 @@ public actor CentralManager {
   /// - Throws:
   ///   - `CentralManagerError.notPoweredOn` if the central manager is **not** in the poweredOn state.
   ///   - `CentralManagerError.alreadyScanning` if the central manager is already scanning.
-  public func scanForPeripherals(withServices services: [CBMUUID]?, options _: [String: Any]? = nil) throws -> AsyncStream<Peripheral> {
+  ///
+  public func scanForPeripherals(withServices services: [CBMUUID]?, options _: [String: Any]? = nil)
+    throws -> AsyncStream<Peripheral>
+  {
     guard centralManager.state == .poweredOn else {
       throw CentralManagerError.notPoweredOn
     }
-    guard !internalIsScanning else {
+    guard !isScanning else {
       throw CentralManagerError.alreadyScanning
     }
-    internalIsScanning = true
+    servicesToScanFor = services
+    isScanning = true
     return AsyncStream { [weak self] continuation in
       guard let self = self else {
         return
       }
-      
-      Task { 
+
+      Task {
         await self.setScanForPeripheralsContinuation(continuation)
-        await self.centralManager.scanForPeripherals(withServices: services)
+        await self.centralManager.scanForPeripherals(withServices: await self.servicesToScanFor)
       }
 
       continuation.onTermination = { @Sendable [weak self] _ in
@@ -258,6 +280,8 @@ public actor CentralManager {
     }
   }
 
+  private var servicesToScanFor: [CBMUUID]?
+
   /// Scans for peripherals that are advertising services.
   /// Scan will stop when task is canceled, so no need to call `stopScan()`.
   ///
@@ -268,8 +292,11 @@ public actor CentralManager {
   /// ```
   ///
   /// see https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518986-scanforperipherals
-  public func scanForPeripherals(withServices services: [UUID], options: [String: Any]? = nil) throws -> AsyncStream<Peripheral> {
-    return try scanForPeripherals(withServices: services.map { CBMUUID(nsuuid: $0) }, options: options)
+  public func scanForPeripherals(withServices services: [UUID], options: [String: Any]? = nil)
+    throws -> AsyncStream<Peripheral>
+  {
+    return try scanForPeripherals(
+      withServices: services.map { CBMUUID(nsuuid: $0) }, options: options)
   }
 
   /// Asks the central manager to stop scanning for peripherals.
@@ -278,7 +305,7 @@ public actor CentralManager {
   public func stopScan() {
     centralManager.stopScan()
     setScanForPeripheralsContinuation(nil)
-    internalIsScanning = false
+    isScanning = false
   }
 
   // MARK: - Establishing or Canceling Connections with Peripherals
@@ -287,21 +314,30 @@ public actor CentralManager {
 
   // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667358
 
-  typealias PeripheralConnectionContinuation = (peripheralUUID: UUID, continuation: AsyncStream<Peripheral.ConnectionState>.Continuation)
+  typealias PeripheralConnectionContinuation = (
+    peripheralUUID: UUID, continuation: AsyncStream<PeripheralConnectionState>.Continuation
+  )
   var peripheralConnectionContinuations: [UUID: PeripheralConnectionContinuation] = [:]
 
-  func setPeripheralConnectionContinuation(id: UUID, continuation: PeripheralConnectionContinuation?) {
+  func setPeripheralConnectionContinuation(
+    id: UUID, continuation: PeripheralConnectionContinuation?
+  ) {
     peripheralConnectionContinuations[id] = continuation
   }
 
-  func getPeripheralConnectionContinuations(peripheralUUID: UUID) -> [PeripheralConnectionContinuation] {
+  func getPeripheralConnectionContinuations(peripheralUUID: UUID)
+    -> [PeripheralConnectionContinuation]
+  {
     return peripheralConnectionContinuations.values.filter { $0.peripheralUUID == peripheralUUID }
   }
 
-  func updatePeripheralConnectionState(peripheralUUID: UUID, state: Peripheral.ConnectionState) async {
-    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: peripheralUUID)
+  func updatePeripheralConnectionState(peripheralUUID: UUID, state: PeripheralConnectionState) async
+  {
+    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(
+      peripheralUUID: peripheralUUID)
     // await peripheralConnectionContinuations.first?.peripheral.setConnectionState(state)
-    await Peripheral.getPeripheral(peripheralUUID: peripheralUUID)?.setConnectionState(state)
+    let peripheral = await Peripheral.getPeripheral(peripheralUUID: peripheralUUID)
+    await peripheral?.setConnectionState(state)
     for peripheralConnectionContinuation in peripheralConnectionContinuations {
       peripheralConnectionContinuation.continuation.yield(state)
     }
@@ -312,7 +348,9 @@ public actor CentralManager {
   /// This allows you to keep "watching" for changed to device state even after a connection or disconnection.
   ///
   /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518766-connect
-  @discardableResult public func connect(_ peripheral: Peripheral, options: [String: Any]? = nil) async throws -> AsyncStream<Peripheral.ConnectionState> {
+  @discardableResult public func connect(_ peripheral: Peripheral, options: [String: Any]? = nil)
+    async throws -> AsyncStream<PeripheralConnectionState>
+  {
     // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
     let currentConnectionState = await peripheral.connectionState
     guard currentConnectionState != .connected else {
@@ -323,7 +361,8 @@ public actor CentralManager {
     }
 
     await peripheral.setConnectionState(.connecting)
-    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: peripheral.identifier)
+    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(
+      peripheralUUID: peripheral.identifier)
     peripheralConnectionContinuations.forEach { $0.continuation.yield(.connecting) }
 
     let stream = await connectionState(forPeripheral: peripheral)
@@ -337,7 +376,9 @@ public actor CentralManager {
   /// Get an async stream representing a peripheral's connection state.
   /// This is the same stream that you can get from `connect(_:)` and `cancelPeripheralConnection(_:)`.
   /// The connection state will be the same as peripheral.connectionState.
-  public func connectionState(forPeripheral peripheral: Peripheral) async -> AsyncStream<Peripheral.ConnectionState> {
+  public func connectionState(forPeripheral peripheral: Peripheral) async -> AsyncStream<
+    PeripheralConnectionState
+  > {
     let connectionState = await peripheral.connectionState
     let stream = AsyncStream { [weak self] continuation in
       guard let self = self else {
@@ -346,7 +387,8 @@ public actor CentralManager {
 
       let id = UUID()
       Task {
-        await self.setPeripheralConnectionContinuation(id: id, continuation: (peripheral.identifier, continuation))
+        await self.setPeripheralConnectionContinuation(
+          id: id, continuation: (peripheral.identifier, continuation))
         // Do this twice after asynchronously adding it to the dictionary
         // That way we can await dropping the first value to know when this is ready
         await peripheral.setConnectionState(connectionState)
@@ -372,9 +414,10 @@ public actor CentralManager {
   /// Cancels an active or pending local connection to a peripheral.
   ///
   /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518952-cancelperipheralconnection
-  @discardableResult public func cancelPeripheralConnection(_ peripheral: Peripheral) async throws -> AsyncStream<Peripheral.ConnectionState> {
+  @discardableResult public func cancelPeripheralConnection(_ peripheral: Peripheral) async throws
+    -> AsyncStream<PeripheralConnectionState>
+  {
     // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
-    print("cancelPeripheralConnection")
     let currentConnectionState = await peripheral.connectionState
     if case .disconnected = currentConnectionState {
       throw PeripheralConnectionError.alreadyDisconnected
@@ -387,7 +430,8 @@ public actor CentralManager {
     }
 
     await peripheral.setConnectionState(.disconnecting)
-    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(peripheralUUID: peripheral.identifier)
+    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(
+      peripheralUUID: peripheral.identifier)
     peripheralConnectionContinuations.forEach { $0.continuation.yield(.disconnecting) }
 
     let stream = await connectionState(forPeripheral: peripheral)
@@ -439,14 +483,5 @@ public actor CentralManager {
   /// See: https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#3222461
   func registerForConnectionEvents(options _: [CBMConnectionEventMatchingOption: Any]? = nil) {
     // Not implemented yet
-  }
-}
-
-// MARK: - Internal Helpers
-
-extension CentralManager {
-
-  func centralManagerBLEState() -> CentralManagerBLEState {
-    return centralManager.state
   }
 }

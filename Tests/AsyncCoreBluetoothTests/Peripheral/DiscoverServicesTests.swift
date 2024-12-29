@@ -1,35 +1,34 @@
-@testable import AsyncCoreBluetooth
 import CoreBluetoothMock
-import XCTest
+import Testing
 
-final class DiscoverServicesTests: XCTestCase, XCTestObservation {
+@testable import AsyncCoreBluetooth
+
+@Suite(.serialized) struct DiscoverServicesTests {
   var centralManager: CentralManager!
 
-  lazy var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(delegate: MockPeripheral.Delegate(), isKnown: true)
+  lazy var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(
+    delegate: MockPeripheral.Delegate(), isKnown: true)
 
   var peripheral: Peripheral!
 
-  override func setUp() async throws {
+  init() async throws {
     CBMCentralManagerMock.simulateInitialState(.poweredOff)
     CBMCentralManagerMock.simulatePeripherals([mockPeripheral])
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
     centralManager = CentralManager(forceMock: true)
-    _ = await centralManager.start().first(where: {$0 == .poweredOn})
+    _ = await centralManager.startStream().first(where: { $0 == .poweredOn })
 
-    peripheral = await centralManager.retrievePeripherals(withIdentifiers: [mockPeripheral.identifier])[0]
+    peripheral = await centralManager.retrievePeripherals(withIdentifiers: [
+      mockPeripheral.identifier
+    ])[0]
 
   }
 
-  override func tearDown() async throws {
-    _ = try? await centralManager.cancelPeripheralConnection(peripheral)
-    centralManager = nil
-  }
-
-  func test_scan_returnsDevices() async throws {
+  @Test func test_scan_returnsDevices() async throws {
     _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
-    // await peripheral.discoverServices([.battery, .deviceInformation])
+    await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
   }
 
 }
