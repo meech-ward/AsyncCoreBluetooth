@@ -9,9 +9,8 @@ public actor Characteristic: Identifiable {
   public class State {
     public internal(set) var uuid: CBMUUID
     public internal(set) var value: Data?
-
+    public internal(set) var isNotifying: Bool = false
     init(uuid: CBMUUID) {
-
       self.uuid = uuid
     }
   }
@@ -28,6 +27,17 @@ public actor Characteristic: Identifiable {
   }
   func setValue(_ value: Data?) {
     self.value = value
+  }
+
+  public internal(set) var isNotifying: Bool = false {
+    willSet {
+      Task { @MainActor in
+        self.state.isNotifying = newValue
+      }
+    }
+  }
+  func setIsNotifying(_ isNotifying: Bool) {
+    self.isNotifying = isNotifying
   }
 
   public internal(set) weak var service: Service?

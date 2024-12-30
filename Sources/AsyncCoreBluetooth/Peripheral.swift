@@ -283,6 +283,8 @@ public actor Peripheral {
   var readCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Data?, Error>>] = [:]
   var writeCharacteristicWithResponseContinuations: Deque<CheckedContinuation<Void, any Error>> =
     Deque<CheckedContinuation<Void, Error>>()
+
+  var notifyCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Bool, Error>>] = [:]
 }
 
 // MARK: - Read, Write, Notify
@@ -291,9 +293,7 @@ extension Peripheral {
   public func readValue(for characteristic: Characteristic) async throws -> Data? {
     return try await withCheckedThrowingContinuation { continuation in
       if readCharacteristicValueContinuations[characteristic.uuid] == nil {
-        readCharacteristicValueContinuations[characteristic.uuid] = Deque<
-          CheckedContinuation<Data?, Error>
-        >()
+        readCharacteristicValueContinuations[characteristic.uuid] = []
       }
       readCharacteristicValueContinuations[characteristic.uuid]?.append(continuation)
       cbPeripheral.readValue(for: characteristic.characteristic)
@@ -314,6 +314,18 @@ extension Peripheral {
     _ value: Data, for characteristic: Characteristic
   ) {
     cbPeripheral.writeValue(value, for: characteristic.characteristic, type: .withoutResponse)
+  }
+
+  public func setNotifyValue(_ enabled: Bool, for characteristic: Characteristic) async throws
+    -> Bool
+  {
+    return try await withCheckedThrowingContinuation { continuation in
+      if notifyCharacteristicValueContinuations[characteristic.uuid] == nil {
+        notifyCharacteristicValueContinuations[characteristic.uuid] = []
+      }
+      notifyCharacteristicValueContinuations[characteristic.uuid]?.append(continuation)
+      cbPeripheral.setNotifyValue(enabled, for: characteristic.characteristic)
+    }
   }
 }
 

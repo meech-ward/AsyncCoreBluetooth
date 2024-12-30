@@ -17,7 +17,6 @@ This library only supports the central role, it does not support the peripheral 
 
 It's also in the early stages of development, so here are things that are not yet implemented:
 
-- notify and indicate from the peripheral
 - write for descriptors (write for characteristics is supported)
 - read for descriptors (read for characteristics is supported)
 - `centralManager(_: CBMCentralManager, willRestoreState dict: [String: Any])`
@@ -35,8 +34,8 @@ so the bare minimum is working fine, but the rest is still to come.
 
 ## Core Bluetooth
 
-https://developer.apple.com/documentation/corebluetooth
-https://punchthrough.com/core-bluetooth-basics/
+* https://developer.apple.com/documentation/corebluetooth
+* https://punchthrough.com/core-bluetooth-basics/
 
 ## Swift Package Manager
 
@@ -66,15 +65,16 @@ Check example-no-ui.md for a connection example.
 
 Here are some snippets:
 
-### Initializing The Central Manager
+## Initializing The Central Manager
 
-Setup the central manager and check the current ble state:
+Setup the central manager and check the current ble state by calling `start()` or `startStream()`. They do the same thing, but `startStream()` returns an `AsyncStream` that you can use to listen for changes to the ble state.
 
 ```swift
 import AsyncCoreBluetooth
 
 let centralManager = CentralManager()
 
+// centralManager.start() if you don't need to listen for changes to the ble state
 for await bleState in await centralManager.startStream() {
   switch bleState {
     case .unknown:
