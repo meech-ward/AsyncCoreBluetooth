@@ -26,16 +26,16 @@ import Testing
     ])[0]
     _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
-    let services = await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
-    guard let service = services.first else {
+    let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
+    guard let service = services[MockPeripheral.UUIDs.Device.service] else {
       Issue.record("couldn't get device")
       return
     }
     self.service = service
 
-    let characteristics = await peripheral.discoverCharacteristics(
+    let characteristics = try await peripheral.discoverCharacteristics(
       [MockPeripheral.UUIDs.Device.characteristic], for: service)
-    guard let characteristic = characteristics.first else {
+    guard let characteristic = characteristics[MockPeripheral.UUIDs.Device.characteristic] else {
       Issue.record("couldn't get characteristic")
       return
     }

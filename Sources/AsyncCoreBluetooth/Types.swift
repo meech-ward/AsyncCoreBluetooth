@@ -38,6 +38,15 @@ public enum PeripheralConnectionError: Error {
   case failedToConnect
 }
 
+public enum ServiceError: Error {
+  case unableToFindServices
+}
+
+public enum CharacteristicError: Error {
+  case unableToFindCharacteristics
+  case unableToFindCharacteristicService
+}
+
 public enum AdvertisementDataValue: Sendable {
     case localName(key: String, value: String)
     case manufacturerData(key: String, value: Data)

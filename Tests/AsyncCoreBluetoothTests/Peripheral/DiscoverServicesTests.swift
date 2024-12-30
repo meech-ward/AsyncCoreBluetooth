@@ -30,8 +30,8 @@ import Testing
   {
     _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
-    let services = await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
-    guard let service = services.first else {
+    let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
+    guard let service = services[MockPeripheral.UUIDs.Device.service] else {
       Issue.record("couldn't get device")
       return
     }
@@ -43,8 +43,8 @@ import Testing
   {
     _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
-    let services = await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
-    guard let service = services.first,
+    let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
+    guard let service = services[MockPeripheral.UUIDs.Device.service],
       let peripheralService = await peripheral.services?.first,
       let peripheralStateService = await peripheral.state.services?.first
     else {
@@ -61,8 +61,8 @@ import Testing
   {
     _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
-    let services = await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
-    guard let service = services.first else {
+    let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
+    guard let service = services[MockPeripheral.UUIDs.Device.service] else {
       Issue.record("couldn't get device")
       return
     }
@@ -82,10 +82,10 @@ import Testing
       peripheral.discoverServices([MockPeripheral.UUIDs.Device.service]),
       peripheral.discoverServices([MockPeripheral.UUIDs.Device.service]),
     ]
-    let services = await servicesAsync
-    guard let service1 = services[0].first, let service2 = services[1].first,
-      let service3 = services[2].first, let service4 = services[3].first,
-      let service5 = services[4].first, let service6 = services[5].first
+    let services = try await servicesAsync
+    guard let service1 = services[0][MockPeripheral.UUIDs.Device.service], let service2 = services[1][MockPeripheral.UUIDs.Device.service],
+      let service3 = services[2][MockPeripheral.UUIDs.Device.service], let service4 = services[3][MockPeripheral.UUIDs.Device.service],
+      let service5 = services[4][MockPeripheral.UUIDs.Device.service], let service6 = services[5][MockPeripheral.UUIDs.Device.service]
     else {
       Issue.record("couldn't get services")
       return

@@ -1,3 +1,4 @@
+@preconcurrency import CoreBluetooth
 @preconcurrency import CoreBluetoothMock
 import DequeModule
 import Foundation
@@ -20,19 +21,26 @@ extension Peripheral {
   }
 
   func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) async {
+    delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
+    let continuation = discoverServicesContinuations.popFirst()
+    if let error {
+      continuation?.resume(throwing: error)
+      return
+    }
     guard let cbServices = cbPeripheral.services else {
+      continuation?.resume(throwing: ServiceError.unableToFindServices)
       return
     }
     var services = [Service]()
+    var servicesMap: [CBUUID: Service] = [:]
     for cbService in cbServices {
       let service = await Service(service: cbService, peripheral: self)
       services.append(service)
+      servicesMap[cbService.uuid] = service
     }
 
-    delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
     self.services = services
-    discoverServicesContinuations.forEach { $0.resume(with: Result.success(services)) }
-    discoverServicesContinuations = []
+    continuation?.resume(with: Result.success(servicesMap))
   }
 
   func peripheral(
@@ -47,30 +55,38 @@ extension Peripheral {
     _ cbPeripheral: CBMPeripheral, didDiscoverCharacteristicsFor cbmService: CBMService,
     error: Error?
   ) async {
+
+    delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
+    let continuation = discoverCharacteristicsContinuations[cbmService.uuid]?.popFirst()
+    if let error {
+      continuation?.resume(throwing: error)
+      return
+    }
+
     guard let cbCharacteristics = cbmService.characteristics else {
+      continuation?.resume(throwing: CharacteristicError.unableToFindCharacteristics)
       return
     }
 
     guard let service = services?.first(where: { $0.uuid == cbmService.uuid }) else {
       print("found characteristics for unknown service \(cbmService.uuid)")
+      continuation?.resume(throwing: CharacteristicError.unableToFindCharacteristicService)
       return
     }
 
     var characteristics = [Characteristic]()
+    var characteristicsMap: [CBUUID: Characteristic] = [:]
     for cbCharacteristic in cbCharacteristics {
       let characteristic = await Characteristic(characteristic: cbCharacteristic, service: service)
       characteristics.append(characteristic)
+      characteristicsMap[cbCharacteristic.uuid] = characteristic
     }
 
     delegate?.peripheral(cbPeripheral, didDiscoverCharacteristicsFor: cbmService, error: error)
 
     await service.setCharacteristics(characteristics)
 
-    discoverCharacteristicsContinuations[service.uuid]?.forEach {
-      $0.resume(with: Result.success(characteristics))
-    }
-    discoverCharacteristicsContinuations[service.uuid] = []
-
+    continuation?.resume(with: Result.success(characteristicsMap))
   }
 
   func peripheral(

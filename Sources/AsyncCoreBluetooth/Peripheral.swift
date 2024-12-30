@@ -239,18 +239,22 @@ public actor Peripheral {
 
   /// Discovers the specified services of the peripheral.
   // internally manage the state continuations
-  var discoverServicesContinuations: [CheckedContinuation<[Service], Never>] = []
+  var discoverServicesContinuations = Deque<
+    CheckedContinuation<[CBUUID /*service uuid*/: Service], Error>
+  >()
   @discardableResult
-  public func discoverServices(_ serviceUUIDs: [CBUUID]?) async -> [Service] {
-    return await withCheckedContinuation { continuation in
+  public func discoverServices(_ serviceUUIDs: [CBUUID]?) async throws -> [CBUUID /*service uuid*/:
+    Service]
+  {
+    return try await withCheckedThrowingContinuation { continuation in
       discoverServicesContinuations.append(continuation)
       cbPeripheral.discoverServices(serviceUUIDs)
     }
   }
 
-  public func discoverServices(serviceUUIDs: [UUID]?) async -> [Service] {
-    return await discoverServices(serviceUUIDs?.map { CBUUID(nsuuid: $0) })
-  }
+  // public func discoverServices(serviceUUIDs: [UUID]?) async -> [Service] {
+  //   return await discoverServices(serviceUUIDs?.map { CBUUID(nsuuid: $0) })
+  // }
 
   /// Discovers the specified included services of a previously-discovered service.
   public func discoverIncludedServices(_ includedServiceUUIDs: [CBUUID]?, for service: Service) {}
@@ -258,14 +262,16 @@ public actor Peripheral {
   // MARK: - Discovering Characteristics
 
   var discoverCharacteristicsContinuations:
-    [CBUUID: [CheckedContinuation<[Characteristic], Never>]] = [:]
+    [CBUUID /*service uuid*/: Deque<
+      CheckedContinuation<[CBUUID /*characteristic uuid*/: Characteristic], Error>
+    >] = [:]
 
   @discardableResult
   public func discoverCharacteristics(
     _ characteristicUUIDs: [CBUUID]?,
     for service: Service
-  ) async -> [Characteristic] {
-    return await withCheckedContinuation { continuation in
+  ) async throws -> [CBUUID: Characteristic] {
+    return try await withCheckedThrowingContinuation { continuation in
       if discoverCharacteristicsContinuations[service.uuid] == nil {
         discoverCharacteristicsContinuations[service.uuid] = []
       }
