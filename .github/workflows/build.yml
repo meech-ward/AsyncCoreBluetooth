@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: swift-actions/setup-swift@v1
+      - uses: SwiftyLab/setup-swift@latest
 
       - name: Checkout code
         uses: actions/checkout@v2

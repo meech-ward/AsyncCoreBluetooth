@@ -2,7 +2,7 @@
 
 ![Build and Test](https://github.com/meech-ward/AsyncCoreBluetooth/actions/workflows/build.yml/badge.svg)
 
-This library is wrapper around [CoreBluetooth](https://developer.apple.com/documentation/corebluetooth) and [CoreBluetoothMock](https://github.com/NordicSemiconductor/IOS-CoreBluetooth-Mock) that allows you to write your core bluetooth code using swift concurrency. It also plays nice with SwiftUI.
+This library is a Swift 6 wrapper around [CoreBluetooth](https://developer.apple.com/documentation/corebluetooth) and [CoreBluetoothMock](https://github.com/NordicSemiconductor/IOS-CoreBluetooth-Mock) that allows you to write your core bluetooth code using swift concurrency. It also plays nice with SwiftUI.
 
 The main classes are:
 
