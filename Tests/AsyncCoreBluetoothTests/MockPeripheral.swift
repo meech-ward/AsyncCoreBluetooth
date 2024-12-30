@@ -16,6 +16,7 @@ class MockPeripheral: @unchecked Sendable {
   static let deviceCharacteristic = CBMCharacteristicMock(
     type: UUIDs.Device.characteristic, properties: [.read, .write, .notify, .indicate],
     descriptors: CBMDescriptorMock(type: UUIDs.Device.descriptor))
+    
 
   static let deviceService = CBMServiceMock(
     type: UUIDs.Device.service, primary: true, characteristics: [deviceCharacteristic])

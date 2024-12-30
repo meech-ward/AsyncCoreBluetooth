@@ -139,6 +139,8 @@ extension Peripheral {
     _ cbPeripheral: CBMPeripheral, didUpdateValueFor cbCharacteristic: CBMCharacteristic,
     error: Error?
   ) async {
+    delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: error)
+
     let continuation = readCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
     let service = services?.first(where: { $0.uuid == cbCharacteristic.service?.uuid })
     let characteristic = await service?.characteristics?.first(where: {
@@ -146,13 +148,21 @@ extension Peripheral {
     })
     await characteristic?.setValue(cbCharacteristic.value)
 
-    delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: error)
-
     if let error {
       continuation?.resume(throwing: error)
+      if await characteristic?.isNotifying == true {
+        await characteristic?.characteristicValueContinuations.values.forEach {
+          $0.yield(Result.failure(error))
+        }
+      }
       return
     }
     continuation?.resume(with: Result.success(cbCharacteristic.value))
+    if await characteristic?.isNotifying == true {
+      await characteristic?.characteristicValueContinuations.values.forEach {
+        $0.yield(Result.success(cbCharacteristic.value))
+      }
+    }
   }
 
   func peripheral(

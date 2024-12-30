@@ -316,6 +316,7 @@ extension Peripheral {
     cbPeripheral.writeValue(value, for: characteristic.characteristic, type: .withoutResponse)
   }
 
+  @discardableResult
   public func setNotifyValue(_ enabled: Bool, for characteristic: Characteristic) async throws
     -> Bool
   {
