@@ -111,9 +111,9 @@ public actor Peripheral {
 
   // MARK: - Peripheral Properties
 
-  /// The underlying ``CBMPeripheral`` instance.
+  /// The underlying `CBMPeripheral` instance.
   ///
-  /// Avoid using this if you can. It's been left public in case this library missed some functionality that is only available in the underlying ``CBMPeripheral``.
+  /// Avoid using this if you can. It's been left public in case this library missed some functionality that is only available in the underlying `CBMPeripheral`.
   public private(set) var cbPeripheral: CBMPeripheral
 
   //  var state: PeripheralState {
@@ -206,14 +206,10 @@ public actor Peripheral {
 
   // MARK: - Peripheral Creation and Caching
 
-  static func getOrCreatePeripheral(cbPeripheral: CBMPeripheral) async -> Peripheral {
-    if let peripheral = await PeripheralStore.shared.getPeripheral(for: cbPeripheral.identifier) {
-      return peripheral
-    } else {
-      let peripheral = await Peripheral(cbPeripheral: cbPeripheral)
-      await PeripheralStore.shared.store(peripheral, for: cbPeripheral.identifier)
-      return peripheral
-    }
+  static func createPeripheral(cbPeripheral: CBMPeripheral) async -> Peripheral {
+    let peripheral = await Peripheral(cbPeripheral: cbPeripheral)
+    await PeripheralStore.shared.store(peripheral, for: cbPeripheral.identifier)
+    return peripheral
   }
 
   static func getPeripheral(cbPeripheral: CBMPeripheral) async -> Peripheral? {
@@ -284,7 +280,8 @@ public actor Peripheral {
   var writeCharacteristicWithResponseContinuations: Deque<CheckedContinuation<Void, any Error>> =
     Deque<CheckedContinuation<Void, Error>>()
 
-  var notifyCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Bool, Error>>] = [:]
+  var notifyCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Bool, Error>>] =
+    [:]
 }
 
 // MARK: - Read, Write, Notify

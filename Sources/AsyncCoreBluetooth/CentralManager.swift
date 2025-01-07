@@ -81,9 +81,9 @@ public actor CentralManager {
   /// However, if you really need to use the delegate, you can pass it in here. This will not effect the async streams.
   public var delegate: CBMCentralManagerDelegate?
 
-  /// The underlying ``CBMCentralManager`` instance.
+  /// The underlying CBMCentralManager instance.
   ///
-  /// Avoid using this if you can. It's been left public in case this library missed some functionality that is only available in the underlying ``CBMCentralManager``.
+  /// Avoid using this if you can. It's been left public in case this library missed some functionality that is only available in the underlying CBMCentralManager.
   public lazy var centralManager: CBMCentralManager = CBMCentralManagerFactory.instance(
     delegate: centralManagerDelegate,
     queue: queue,
@@ -454,7 +454,7 @@ public actor CentralManager {
     let cbPeripherals = centralManager.retrieveConnectedPeripherals(withServices: services)
     var peripherals = [Peripheral]()
     for cbPeripheral in cbPeripherals {
-      peripherals.append(await Peripheral.getOrCreatePeripheral(cbPeripheral: cbPeripheral))
+      peripherals.append(await Peripheral.createPeripheral(cbPeripheral: cbPeripheral))
     }
     return peripherals
   }
@@ -464,7 +464,7 @@ public actor CentralManager {
     let cbPeripherals = centralManager.retrievePeripherals(withIdentifiers: identifiers)
     var peripherals = [Peripheral]()
     for cbPeripheral in cbPeripherals {
-      peripherals.append(await Peripheral.getOrCreatePeripheral(cbPeripheral: cbPeripheral))
+      peripherals.append(await Peripheral.createPeripheral(cbPeripheral: cbPeripheral))
     }
     return peripherals
   }

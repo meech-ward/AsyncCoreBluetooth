@@ -24,7 +24,7 @@ extension CentralManager {
     guard let scanForPeripheralsContinuation = scanForPeripheralsContinuation else {
       return
     }
-    let p = await Peripheral.getOrCreatePeripheral(cbPeripheral: cbPeripheral)
+    let p = await Peripheral.createPeripheral(cbPeripheral: cbPeripheral)
     scanForPeripheralsContinuation.yield(p)
   }
 
