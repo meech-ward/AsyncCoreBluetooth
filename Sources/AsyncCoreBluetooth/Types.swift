@@ -25,12 +25,16 @@ public typealias PeripheralBLEState = CBMPeripheralState
 // }
 public typealias Descriptor = CBMDescriptor
 
+public enum AsyncCoreBluetoothError: Error {
+  case taskCancelled
+}
+
 public enum CentralManagerError: Error {
   case alreadyScanning
   case notPoweredOn
 }
 
-public enum PeripheralConnectionError: Error {
+public enum PeripheralConnectionError: String, Error {
   case alreadyConnecting
   case alreadyConnected
   case alreadyDisconnecting
@@ -48,77 +52,77 @@ public enum CharacteristicError: Error {
 }
 
 public enum AdvertisementDataValue: Sendable {
-    case localName(key: String, value: String)
-    case manufacturerData(key: String, value: Data)
-    case serviceData(key: String, value: [CBMUUID: Data])
-    case serviceUUIDs(key: String, value: [CBMUUID])
-    case overflowServiceUUIDs(key: String, value: [CBMUUID])
-    case txPowerLevel(key: String, value: NSNumber)
-    case isConnectable(key: String, value: NSNumber)
-    case solicitedServiceUUIDs(key: String, value: [CBMUUID])
+  case localName(key: String, value: String)
+  case manufacturerData(key: String, value: Data)
+  case serviceData(key: String, value: [CBMUUID: Data])
+  case serviceUUIDs(key: String, value: [CBMUUID])
+  case overflowServiceUUIDs(key: String, value: [CBMUUID])
+  case txPowerLevel(key: String, value: NSNumber)
+  case isConnectable(key: String, value: NSNumber)
+  case solicitedServiceUUIDs(key: String, value: [CBMUUID])
 
-    init?(key: String, value: Any) {
-        switch key {
-        case CBMAdvertisementDataLocalNameKey:
-            guard let value = value as? String else { return nil }
-            self = .localName(key: key, value: value)
+  init?(key: String, value: Any) {
+    switch key {
+    case CBMAdvertisementDataLocalNameKey:
+      guard let value = value as? String else { return nil }
+      self = .localName(key: key, value: value)
 
-        case CBMAdvertisementDataManufacturerDataKey:
-            guard let value = value as? Data else { return nil }
-            self = .manufacturerData(key: key, value: value)
+    case CBMAdvertisementDataManufacturerDataKey:
+      guard let value = value as? Data else { return nil }
+      self = .manufacturerData(key: key, value: value)
 
-        case CBMAdvertisementDataServiceDataKey:
-            guard let value = value as? [CBMUUID: Data] else { return nil }
-            self = .serviceData(key: key, value: value)
+    case CBMAdvertisementDataServiceDataKey:
+      guard let value = value as? [CBMUUID: Data] else { return nil }
+      self = .serviceData(key: key, value: value)
 
-        case CBMAdvertisementDataServiceUUIDsKey:
-            guard let value = value as? [CBMUUID] else { return nil }
-            self = .serviceUUIDs(key: key, value: value)
+    case CBMAdvertisementDataServiceUUIDsKey:
+      guard let value = value as? [CBMUUID] else { return nil }
+      self = .serviceUUIDs(key: key, value: value)
 
-        case CBMAdvertisementDataOverflowServiceUUIDsKey:
-            guard let value = value as? [CBMUUID] else { return nil }
-            self = .overflowServiceUUIDs(key: key, value: value)
+    case CBMAdvertisementDataOverflowServiceUUIDsKey:
+      guard let value = value as? [CBMUUID] else { return nil }
+      self = .overflowServiceUUIDs(key: key, value: value)
 
-        case CBMAdvertisementDataTxPowerLevelKey:
-            guard let value = value as? NSNumber else { return nil }
-            self = .txPowerLevel(key: key, value: value)
+    case CBMAdvertisementDataTxPowerLevelKey:
+      guard let value = value as? NSNumber else { return nil }
+      self = .txPowerLevel(key: key, value: value)
 
-        case CBMAdvertisementDataIsConnectable:
-            guard let value = value as? NSNumber else { return nil }
-            self = .isConnectable(key: key, value: value)
+    case CBMAdvertisementDataIsConnectable:
+      guard let value = value as? NSNumber else { return nil }
+      self = .isConnectable(key: key, value: value)
 
-        case CBMAdvertisementDataSolicitedServiceUUIDsKey:
-            guard let value = value as? [CBMUUID] else { return nil }
-            self = .solicitedServiceUUIDs(key: key, value: value)
+    case CBMAdvertisementDataSolicitedServiceUUIDsKey:
+      guard let value = value as? [CBMUUID] else { return nil }
+      self = .solicitedServiceUUIDs(key: key, value: value)
 
-        default:
-            return nil
-        }
+    default:
+      return nil
     }
+  }
 
-    var originalValue: Any {
-        switch self {
-        case .localName(_, let value): return value
-        case .manufacturerData(_, let value): return value
-        case .serviceData(_, let value): return value
-        case .serviceUUIDs(_, let value): return value
-        case .overflowServiceUUIDs(_, let value): return value
-        case .txPowerLevel(_, let value): return value
-        case .isConnectable(_, let value): return value
-        case .solicitedServiceUUIDs(_, let value): return value
-        }
+  var originalValue: Any {
+    switch self {
+    case .localName(_, let value): return value
+    case .manufacturerData(_, let value): return value
+    case .serviceData(_, let value): return value
+    case .serviceUUIDs(_, let value): return value
+    case .overflowServiceUUIDs(_, let value): return value
+    case .txPowerLevel(_, let value): return value
+    case .isConnectable(_, let value): return value
+    case .solicitedServiceUUIDs(_, let value): return value
     }
-    
-    var key: String {
-        switch self {
-        case .localName(let key, _): return key
-        case .manufacturerData(let key, _): return key
-        case .serviceData(let key, _): return key
-        case .serviceUUIDs(let key, _): return key
-        case .overflowServiceUUIDs(let key, _): return key
-        case .txPowerLevel(let key, _): return key
-        case .isConnectable(let key, _): return key
-        case .solicitedServiceUUIDs(let key, _): return key
-        }
+  }
+
+  var key: String {
+    switch self {
+    case .localName(let key, _): return key
+    case .manufacturerData(let key, _): return key
+    case .serviceData(let key, _): return key
+    case .serviceUUIDs(let key, _): return key
+    case .overflowServiceUUIDs(let key, _): return key
+    case .txPowerLevel(let key, _): return key
+    case .isConnectable(let key, _): return key
+    case .solicitedServiceUUIDs(let key, _): return key
     }
+  }
 }
