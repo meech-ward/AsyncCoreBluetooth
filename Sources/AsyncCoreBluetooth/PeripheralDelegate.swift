@@ -157,10 +157,20 @@ extension Peripheral {
       }
       return
     }
-    continuation?.resume(with: Result.success(cbCharacteristic.value))
+
+    guard let value = cbCharacteristic.value else {
+      continuation?.resume(throwing: AsyncCoreBluetoothError.unexpectedNilData)
+      if await characteristic?.isNotifying == true {
+        await characteristic?.characteristicValueContinuations.values.forEach {
+          $0.yield(Result.failure(AsyncCoreBluetoothError.unexpectedNilData))
+        }
+      }
+      return
+    }
+    continuation?.resume(with: Result.success(value))
     if await characteristic?.isNotifying == true {
       await characteristic?.characteristicValueContinuations.values.forEach {
-        $0.yield(Result.success(cbCharacteristic.value))
+        $0.yield(Result.success(value))
       }
     }
   }

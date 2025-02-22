@@ -56,10 +56,10 @@ public actor Characteristic: Identifiable {
     }
   }
 
-  var characteristicValueContinuations: [UUID: AsyncStream<Result<Data?, Error>>.Continuation] = [:]
+  var characteristicValueContinuations: [UUID: AsyncStream<Result<Data, Error>>.Continuation] = [:]
 
   func setCharacteristicValueContinuation(
-    id: UUID, continuation: AsyncStream<Result<Data?, Error>>.Continuation?
+    id: UUID, continuation: AsyncStream<Result<Data, Error>>.Continuation?
   ) {
     characteristicValueContinuations[id] = continuation
   }
@@ -67,14 +67,16 @@ public actor Characteristic: Identifiable {
   /// Get an async stream representing the characteristic's value.
   /// This is most useful when the characteristic is notifying.
   /// The value will be the same as characteristic.value.
-  public func valueStream() async -> AsyncStream<Result<Data?, Error>> {
+  public func valueStream() async -> AsyncStream<Result<Data, Error>> {
     return AsyncStream { continuation in
       let id = UUID()
 
       self.setCharacteristicValueContinuation(
         id: id, continuation: continuation)
 
-      continuation.yield(Result.success(self.value))
+      if let value = self.value {
+        continuation.yield(Result.success(value))
+      }
 
       continuation.onTermination = { _ in
         Task {

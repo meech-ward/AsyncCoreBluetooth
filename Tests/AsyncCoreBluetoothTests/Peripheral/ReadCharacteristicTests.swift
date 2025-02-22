@@ -54,10 +54,7 @@ import Testing
     mockPeripheralDelegate.readData = testData.data(using: .utf8)
 
     let data = try await peripheral.readValue(for: characteristic)
-    guard let data else {
-      Issue.record("couldn't get data")
-      return
-    }
+
     let receivedString = String(data: data, encoding: .utf8)
     #expect(receivedString == testData)
   }
@@ -89,20 +86,17 @@ import Testing
     mockPeripheralDelegate.readData = "test10".data(using: .utf8)
     async let data10 = try await peripheral.readValue(for: characteristic)
 
-    guard let data = try await data, let data2 = try await data2, let data3 = try await data3, let data4 = try await data4, let data5 = try await data5, let data6 = try await data6, let data7 = try await data7, let data8 = try await data8, let data9 = try await data9, let data10 = try await data10 else {
-      Issue.record("couldn't get data")
-      return
-    }
-    print(String(data: data, encoding: .utf8) ?? "nil")
-    print(String(data: data2, encoding: .utf8) ?? "nil")
-    print(String(data: data3, encoding: .utf8) ?? "nil")
-    print(String(data: data4, encoding: .utf8) ?? "nil")
-    print(String(data: data5, encoding: .utf8) ?? "nil")
-    print(String(data: data6, encoding: .utf8) ?? "nil")
-    print(String(data: data7, encoding: .utf8) ?? "nil")
-    print(String(data: data8, encoding: .utf8) ?? "nil")
-    print(String(data: data9, encoding: .utf8) ?? "nil")
-    print(String(data: data10, encoding: .utf8) ?? "nil")
+  
+    print(String(data: try await data, encoding: .utf8) ?? "nil")
+    print(String(data: try await data2, encoding: .utf8) ?? "nil")
+    print(String(data: try await data3, encoding: .utf8) ?? "nil")
+    print(String(data: try await data4, encoding: .utf8) ?? "nil")
+    print(String(data: try await data5, encoding: .utf8) ?? "nil")
+    print(String(data: try await data6, encoding: .utf8) ?? "nil")
+    print(String(data: try await data7, encoding: .utf8) ?? "nil")
+    print(String(data: try await data8, encoding: .utf8) ?? "nil")
+    print(String(data: try await data9, encoding: .utf8) ?? "nil")
+    print(String(data: try await data10, encoding: .utf8) ?? "nil")
     // let receivedString = String(data: data, encoding: .utf8)
     // #expect(receivedString == testData)
   }

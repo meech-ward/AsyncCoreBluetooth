@@ -276,7 +276,7 @@ public actor Peripheral {
     }
   }
 
-  var readCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Data?, Error>>] = [:]
+  var readCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Data, Error>>] = [:]
   var writeCharacteristicWithResponseContinuations: Deque<CheckedContinuation<Void, any Error>> =
     Deque<CheckedContinuation<Void, Error>>()
 
@@ -287,7 +287,7 @@ public actor Peripheral {
 // MARK: - Read, Write, Notify
 extension Peripheral {
   @discardableResult
-  public func readValue(for characteristic: Characteristic) async throws -> Data? {
+  public func readValue(for characteristic: Characteristic) async throws -> Data {
     return try await withCheckedThrowingContinuation { continuation in
       if readCharacteristicValueContinuations[characteristic.uuid] == nil {
         readCharacteristicValueContinuations[characteristic.uuid] = []

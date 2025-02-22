@@ -89,7 +89,7 @@ import Testing
     var called = false
     Task {
       // drop the initial value
-      for await result in stream.dropFirst() {
+      for await result in stream {
         let value = try result.get()
         #expect(value == "test".data(using: .utf8))
         called = true
@@ -122,7 +122,7 @@ import Testing
     var called = false
     Task {
       // drop the initial value
-      for await result in stream.dropFirst() {
+      for await result in stream {
         #expect(throws: CharacteristicError.unableToFindCharacteristics.self) {
           let _ = try result.get()
         }

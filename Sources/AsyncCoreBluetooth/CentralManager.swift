@@ -189,7 +189,7 @@ public actor CentralManager {
   ///
   /// Example usage:
   /// ```swift
-  /// for await state in centralManager.start() {
+  /// for await state in centralManager.startStream() {
   ///   print("BLE state changed to: \(state)")
   /// }
   /// ```
