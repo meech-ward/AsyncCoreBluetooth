@@ -270,3 +270,7 @@ you can requst a new async stream or break out of these streams as much as you l
 ```
 swift test --no-parallel
 ```
+
+## Building Documentation
+
+check build.sh

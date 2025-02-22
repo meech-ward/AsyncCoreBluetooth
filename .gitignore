@@ -7,3 +7,8 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 .vscode
+
+.docc-build/
+**/.docc-build/
+AsyncCoreBluetooth.doccarchive
+swift-docs

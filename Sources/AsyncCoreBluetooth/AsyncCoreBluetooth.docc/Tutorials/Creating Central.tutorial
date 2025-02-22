@@ -1,0 +1,64 @@
+@Tutorial(time: 30) {
+    @Intro(title: "Creating Central") {
+        This tutorial guides you through creating a Central to discover and connect to a Peripheral.
+        
+        @Image(source: creating-intro.png, alt: "ble")
+    }
+
+                
+    @Comment {
+        This is very incomplete, just here as a placeholder for later on.
+    } 
+    
+    @Section(title: "Create a Central") {
+        @ContentAndMedia {
+            Just setup the central.
+            
+            @Image(source: ble-chapter1.png, alt: "BLE")
+        }
+        
+        @Steps {
+            @Step {
+                Create a new Swift file named `ItDoesntMatter.swift`.
+                
+                @Code(name: "ItDoesntMatter.swift", file: 01-creating-code-01-01.swift) 
+            }    
+            
+            @Step {
+                Scan for peripheral.
+                
+                @Code(name: "ItDoesntMatter.swift", file: 01-creating-code-01-02.swift) 
+            }
+
+            now to connect 
+            
+            @Step {
+                Connect to peripheral.
+                
+                @Code(name: "ItDoesntMatter.swift", file: 01-creating-code-01-03.swift) 
+            }       
+        }
+        
+    }
+
+    @Section(title: "SwiftUI") {
+        @ContentAndMedia {
+            Using this with SwiftUI
+            
+            @Image(source: ble-chapter1.png, alt: "BLE")
+        }
+        
+        @Steps {
+            @Step {
+                Check BLE Status
+                
+                @Code(name: "WhateverView.swift", file: 01-creating-code-02-01.swift) 
+            }   
+            @Step {
+                Scan for peripheral `WhateverView.swift`.
+                
+                @Code(name: "WhateverView.swift", file: 01-creating-code-02-02.swift) 
+            }   
+        }
+    }
+}

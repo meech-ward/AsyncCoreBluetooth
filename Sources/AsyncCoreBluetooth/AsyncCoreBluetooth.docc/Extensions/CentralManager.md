@@ -1,11 +1,8 @@
 # ``AsyncCoreBluetooth/CentralManager``
 
-@Metadata {
-    @DocumentationExtension(mergeBehavior: append)
-}
 
 Central Manager is the core class responsible for managing and interacting with CoreBluetooth. This class provides an async interface for interacting with CoreBluetooth.
-
+<!-- 
 ## Topics
 
 ### Initialization
@@ -38,5 +35,5 @@ Central Manager is the core class responsible for managing and interacting with 
 
 ### Inspecting Feature Support
 
-- ``supports(_:)``
+- ``supports(_:)`` -->
 

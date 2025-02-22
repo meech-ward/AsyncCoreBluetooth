@@ -12,7 +12,7 @@ Like Core Bluetooth, but async.
 
 ## Overview
 
-AsyncCoreBluetooth provides code.
+AsyncCoreBluetooth is a library.
 
 ### Featured
 

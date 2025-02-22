@@ -19,7 +19,7 @@ import AsyncCoreBluetooth
 
 let centralManager = CentralManager()
 
-for await bleState in await centralManager.start() {
+for await bleState in await centralManager.startStream() {
   switch bleState {
     case .unknown:
       print("Unkown")
