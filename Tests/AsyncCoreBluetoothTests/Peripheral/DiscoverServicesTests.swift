@@ -51,8 +51,8 @@ import Testing
       Issue.record("couldn't get all servies")
       return
     }
-    #expect(await service === peripheralService)
-    #expect(await service === peripheralStateService)
+    #expect(service === peripheralService)
+    #expect(service === peripheralStateService)
   }
 
   @Test("Discover services references the peripheral")

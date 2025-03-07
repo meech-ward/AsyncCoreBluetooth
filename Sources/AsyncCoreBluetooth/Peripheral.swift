@@ -149,7 +149,7 @@ public actor Peripheral {
   /// The delegate methods will get called straight from the CBMPeripheral delegate without going through the Peripheral actor. Avoid using this if you can and just use async streams.
   /// However, if you really need to use the delegate, you can pass it in here. This will not effect the async streams.
   public var delegate: CBMPeripheralDelegate?
-  private nonisolated lazy var peripheralDelegate = PeripheralDelegate(peripheral: self)
+  private var peripheralDelegate: PeripheralDelegate?
 
   // MARK: - Peripheral Connection State
 
@@ -212,7 +212,9 @@ public actor Peripheral {
     await MainActor.run {
       self.state = .init(cbPeripheral: cbPeripheral)
     }
+    let peripheralDelegate = PeripheralDelegate(peripheral: self)
     cbPeripheral.delegate = peripheralDelegate
+    self.peripheralDelegate = peripheralDelegate
   }
 
   // MARK: - Peripheral Creation and Caching
