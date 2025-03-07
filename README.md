@@ -132,7 +132,9 @@ struct ContentView: View {
 Your application should handle all the possible cases of the ble state. It's very common for someone to turn off bluetooth or turn on airplane mode and your application's UI should reflect these states. However, the most common case is `.poweredOn`, so if you're only interested in running code as soon as the device is in that state, you can use the following:
 
 ```swift
-_ = await centralManager.startStream().first(where: {$0 == .poweredOn})
+for await _ in await centralManager.startStream().first(where: {$0 == .poweredOn}) {
+  // re run the setup code if it goes off then back on
+}
 ```
 
 Keep in mind that familiarity with swift concurrency is going to make using this library a lot easier.
