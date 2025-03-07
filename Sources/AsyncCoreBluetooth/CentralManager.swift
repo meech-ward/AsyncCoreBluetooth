@@ -91,7 +91,7 @@ public actor CentralManager {
     forceMock: forceMock)
 
   // CentralManagerState
-  var bleState: CentralManagerBLEState = .unknown {
+  public var bleState: CentralManagerBLEState = .unknown {
     willSet {
       Task { @MainActor in
         state.bleState = newValue

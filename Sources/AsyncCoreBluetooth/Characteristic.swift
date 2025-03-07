@@ -26,6 +26,7 @@ public actor Characteristic: Identifiable {
     }
   }
   func setValue(_ value: Data?) {
+    print("set characteristic value")
     self.value = value
   }
 

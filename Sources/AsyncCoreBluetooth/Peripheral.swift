@@ -190,6 +190,17 @@ public actor Peripheral {
 
   func setConnectionState(_ state: PeripheralConnectionState) async {
     connectionState = state
+
+    if case .disconnected(let cBError) = state {
+      // cancel all discovery continuations
+      discoverCharacteristicsContinuations.forEach { $0.value.forEach { $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking) } }
+      discoverCharacteristicsContinuations.removeAll()
+      discoverServicesContinuations.forEach { $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking) }
+      discoverServicesContinuations.removeAll()
+//      readCharacteristicValueContinuations
+//      writeCharacteristicWithResponseContinuations
+//      notifyCharacteristicValueContinuations
+    }
   }
 
   // MARK: - Peripheral Creation
@@ -236,15 +247,20 @@ public actor Peripheral {
   /// Discovers the specified services of the peripheral.
   // internally manage the state continuations
   var discoverServicesContinuations = Deque<
-    CheckedContinuation<[CBUUID /*service uuid*/: Service], Error>
+    CheckedContinuation<[CBUUID /* service uuid */: Service], Error>
   >()
   @discardableResult
-  public func discoverServices(_ serviceUUIDs: [CBUUID]?) async throws -> [CBUUID /*service uuid*/:
+  public func discoverServices(_ serviceUUIDs: [CBUUID]?) async throws -> [CBUUID /* service uuid */:
     Service]
   {
-    return try await withCheckedThrowingContinuation { continuation in
-      discoverServicesContinuations.append(continuation)
-      cbPeripheral.discoverServices(serviceUUIDs)
+    return try await withTaskCancellationHandler {
+      try await withCheckedThrowingContinuation { continuation in
+
+        discoverServicesContinuations.append(continuation)
+        cbPeripheral.discoverServices(serviceUUIDs)
+      }
+    } onCancel: {
+      // need to figure out how to cancel this nicely
     }
   }
 
@@ -258,8 +274,8 @@ public actor Peripheral {
   // MARK: - Discovering Characteristics
 
   var discoverCharacteristicsContinuations:
-    [CBUUID /*service uuid*/: Deque<
-      CheckedContinuation<[CBUUID /*characteristic uuid*/: Characteristic], Error>
+    [CBUUID /* service uuid */: Deque<
+      CheckedContinuation<[CBUUID /* characteristic uuid */: Characteristic], Error>
     >] = [:]
 
   @discardableResult
@@ -285,9 +301,10 @@ public actor Peripheral {
 }
 
 // MARK: - Read, Write, Notify
-extension Peripheral {
+
+public extension Peripheral {
   @discardableResult
-  public func readValue(for characteristic: Characteristic) async throws -> Data {
+  func readValue(for characteristic: Characteristic) async throws -> Data {
     return try await withCheckedThrowingContinuation { continuation in
       if readCharacteristicValueContinuations[characteristic.uuid] == nil {
         readCharacteristicValueContinuations[characteristic.uuid] = []
@@ -297,7 +314,7 @@ extension Peripheral {
     }
   }
 
-  public func writeValueWithResponse(
+  func writeValueWithResponse(
     _ value: Data, for characteristic: Characteristic
   ) async throws {
     return try await withCheckedThrowingContinuation { continuation in
@@ -307,16 +324,19 @@ extension Peripheral {
   }
 
   /// Writes a value to a characteristic without waiting for a response.
-  public func writeValueWithoutResponse(
+  func writeValueWithoutResponse(
     _ value: Data, for characteristic: Characteristic
   ) {
     cbPeripheral.writeValue(value, for: characteristic.characteristic, type: .withoutResponse)
   }
 
   @discardableResult
-  public func setNotifyValue(_ enabled: Bool, for characteristic: Characteristic) async throws
+  func setNotifyValue(_ enabled: Bool, for characteristic: Characteristic) async throws
     -> Bool
   {
+    if await characteristic.isNotifying == enabled {
+      return true
+    }
     return try await withCheckedThrowingContinuation { continuation in
       if notifyCharacteristicValueContinuations[characteristic.uuid] == nil {
         notifyCharacteristicValueContinuations[characteristic.uuid] = []

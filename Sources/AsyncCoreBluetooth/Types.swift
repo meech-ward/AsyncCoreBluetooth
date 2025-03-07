@@ -41,6 +41,7 @@ public enum PeripheralConnectionError: String, Error {
   case alreadyDisconnecting
   case alreadyDisconnected
   case failedToConnect
+  case disconnectedWhileWorking
 }
 
 public enum ServiceError: Error {
