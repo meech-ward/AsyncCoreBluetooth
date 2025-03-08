@@ -113,18 +113,11 @@ import Testing
     mockPeripheralDelegate.readData = testData.data(using: .utf8)
 
     try await peripheral.readValue(for: characteristic)
-    guard let characteristicValue = await characteristic.value else {
+    guard let characteristicValue = await characteristic.value.raw else {
       Issue.record("couldn't get data")
       return
     }
-    var receivedString = String(data: characteristicValue, encoding: .utf8)
-    #expect(receivedString == testData)
-
-    guard let characteristicStateValue = await characteristic.state.value else {
-      Issue.record("couldn't get data")
-      return
-    }
-    receivedString = String(data: characteristicStateValue, encoding: .utf8)
+    let receivedString = String(data: characteristicValue, encoding: .utf8)
     #expect(receivedString == testData)
   }
 

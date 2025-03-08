@@ -1,45 +1,33 @@
+import AsyncObservable
 import CoreBluetooth
 import CoreBluetoothMock
 
 /// A characteristic of a remote peripheral’s service.
+///
+/// Note about value:
+/// cbCharacteristic.value does not reflect the current operation’s result.
+/// It's a historical record, and the error parameter is the real-time status.
+/// Because of this, there are two properties:
+/// - value: the historical record
+/// - error: the real-time status
+/// And they are seperated from each other. And have to be handled seperately.
+///
 public actor Characteristic: Identifiable {
 
-  @Observable
   @MainActor
-  public class State {
-    public internal(set) var uuid: CBMUUID
-    public internal(set) var value: Data?
-    public internal(set) var isNotifying: Bool = false
-    init(uuid: CBMUUID) {
-      self.uuid = uuid
-    }
-  }
-  @MainActor
-  public private(set) var state: State!
   public let uuid: CBMUUID
-
-  public internal(set) var value: Data? {
-    willSet {
-      Task { @MainActor in
-        self.state.value = newValue
-      }
-    }
-  }
-  func setValue(_ value: Data?) {
-    print("set characteristic value")
-    self.value = value
-  }
-
-  public internal(set) var isNotifying: Bool = false {
-    willSet {
-      Task { @MainActor in
-        self.state.isNotifying = newValue
-      }
-    }
-  }
-  func setIsNotifying(_ isNotifying: Bool) {
-    self.isNotifying = isNotifying
-  }
+  @MainActor
+  private let _value: AsyncObservable<Data?> = .init(nil)
+  @MainActor
+  public var value: any AsyncObservableReadOnly<Data?> { _value }
+  @MainActor
+  private let _error: AsyncObservable<Error?> = .init(nil)
+  @MainActor
+  public var error: any AsyncObservableReadOnly<Error?> { _error }
+  @MainActor
+  private let _isNotifying: AsyncObservable<Bool> = .init(false)
+  @MainActor
+  public var isNotifying: any AsyncObservableReadOnly<Bool> { _isNotifying }
 
   public internal(set) weak var service: Service?
 
@@ -52,38 +40,19 @@ public actor Characteristic: Identifiable {
     self.characteristic = characteristic
     self.properties = characteristic.properties
     self.service = service
-    await MainActor.run {
-      self.state = State(uuid: self.uuid)
+  }
+
+  func update(result: Result<Data, Error>) {
+    switch result {
+    case .success(let value):
+      _value.update(value)
+      _error.update(nil)
+    case .failure(let error):
+      _error.update(error)
     }
   }
 
-  var characteristicValueContinuations: [UUID: AsyncStream<Result<Data, Error>>.Continuation] = [:]
-
-  func setCharacteristicValueContinuation(
-    id: UUID, continuation: AsyncStream<Result<Data, Error>>.Continuation?
-  ) {
-    characteristicValueContinuations[id] = continuation
-  }
-
-  /// Get an async stream representing the characteristic's value.
-  /// This is most useful when the characteristic is notifying.
-  /// The value will be the same as characteristic.value.
-  public func valueStream() async -> AsyncStream<Result<Data, Error>> {
-    return AsyncStream { continuation in
-      let id = UUID()
-
-      self.setCharacteristicValueContinuation(
-        id: id, continuation: continuation)
-
-      if let value = self.value {
-        continuation.yield(Result.success(value))
-      }
-
-      continuation.onTermination = { _ in
-        Task {
-          await self.setCharacteristicValueContinuation(id: id, continuation: nil)
-        }
-      }
-    }
+  func update(isNotifying: Bool) {
+    _isNotifying.update(isNotifying)
   }
 }

@@ -27,7 +27,7 @@ public typealias Descriptor = CBMDescriptor
 
 public enum AsyncCoreBluetoothError: Error {
   case taskCancelled
-  case unexpectedNilData
+  case unexpectedNilData // should never happen
 }
 
 public enum CentralManagerError: Error {

@@ -19,6 +19,7 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/meech-ward/IOS-CoreBluetooth-Mock.git", branch: "main"),
+    .package(url: "https://github.com/meech-ward/AsyncObservable.git", branch: "main"),
     .package(
       url: "https://github.com/apple/swift-collections.git",
       .upToNextMinor(from: "1.1.0")
@@ -29,6 +30,7 @@ let package = Package(
       name: "AsyncCoreBluetooth",
       dependencies: [
         .product(name: "CoreBluetoothMock", package: "IOS-CoreBluetooth-Mock"),
+        .product(name: "AsyncObservable", package: "AsyncObservable"),
         .product(name: "DequeModule", package: "swift-collections"),
       ]
     ),
@@ -37,6 +39,7 @@ let package = Package(
       dependencies: [
         "AsyncCoreBluetooth",
         .product(name: "CoreBluetoothMock", package: "IOS-CoreBluetooth-Mock"),
+        .product(name: "AsyncObservable", package: "AsyncObservable"),
         .product(name: "DequeModule", package: "swift-collections"),
       ]
     ),

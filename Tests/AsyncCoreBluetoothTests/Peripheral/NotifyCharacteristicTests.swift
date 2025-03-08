@@ -46,17 +46,14 @@ import Testing
     "Set notify true and false sets isNotifying true and false on the characteristic")
   func test_setNotifyTrueAndFalse_setsIsNotifyingTrueAndFalse() async throws {
 
-    #expect(await characteristic.isNotifying == false)
-    #expect(await characteristic.state.isNotifying == false)
+    #expect(await characteristic.isNotifying.raw == false)
     let isNotifying = try await peripheral.setNotifyValue(true, for: characteristic)
     #expect(isNotifying == true)
-    #expect(await characteristic.isNotifying == true)
-    #expect(await characteristic.state.isNotifying == true)
+    #expect(await characteristic.isNotifying.raw == true)
 
     let isNotifying2 = try await peripheral.setNotifyValue(false, for: characteristic)
     #expect(isNotifying2 == false)
-    #expect(await characteristic.isNotifying == false)
-    #expect(await characteristic.state.isNotifying == false)
+    #expect(await characteristic.isNotifying.raw == false)
   }
 
   @Test("recieves the new value on the characteristic")
@@ -70,10 +67,11 @@ import Testing
     await peripheral.peripheral(
       cbPeripheral, didUpdateValueFor: characteristic.characteristic, error: nil)
 
-    #expect(await characteristic.value == "test".data(using: .utf8))
+    #expect(await characteristic.value.raw == "test".data(using: .utf8))
   }
 
   @Test("recieves the new value when notifying is enabled", .timeLimit(.minutes(1)))
+    @available(iOS 17.0, macOS 15.0, tvOS 17.0, watchOS 10.0, *)
   func test_recievesNewValueWhenNotifyingIsEnabled() async throws {
     let peripheral = self.peripheral!
     let characteristic = self.characteristic!
@@ -84,13 +82,12 @@ import Testing
 
     try await peripheral.setNotifyValue(true, for: characteristic)
 
-    let stream = await characteristic.valueStream()
+    let stream = await characteristic.value.unwrappedStream()
 
     var called = false
     Task {
       // drop the initial value
-      for await result in stream {
-        let value = try result.get()
+      for await value in stream {
         #expect(value == "test".data(using: .utf8))
         called = true
       }
@@ -107,6 +104,7 @@ import Testing
   }
 
   @Test("recieves the new error when notifying is enabled", .timeLimit(.minutes(1)))
+  @available(iOS 17.0, macOS 15.0, tvOS 17.0, watchOS 10.0, *)
   func test_recievesNewErrorWhenNotifyingIsEnabled() async throws {
     let peripheral = self.peripheral!
     let characteristic = self.characteristic!
@@ -117,15 +115,12 @@ import Testing
 
     try await peripheral.setNotifyValue(true, for: characteristic)
 
-    let stream = await characteristic.valueStream()
+    let stream = await characteristic.error.unwrappedStream()
 
     var called = false
     Task {
-      // drop the initial value
-      for await result in stream {
-        #expect(throws: CharacteristicError.unableToFindCharacteristics.self) {
-          let _ = try result.get()
-        }
+      for await error in stream {
+        #expect(error as? CharacteristicError == CharacteristicError.unableToFindCharacteristics)
         called = true
       }
     }
@@ -141,7 +136,7 @@ import Testing
     #expect(called == true)
   }
 
-  @Test("recieves no new value when notifying is disabled", .timeLimit(.minutes(1)))
+  @Test("still recieves new value when notifying is disabled. notify disabled is for BLE communication, not for internal values", .timeLimit(.minutes(1)))
   func test_recievesNoNewValueWhenNotifyingIsDisabled() async throws {
     let peripheral = self.peripheral!
     let characteristic = self.characteristic!
@@ -150,7 +145,7 @@ import Testing
 
     cbCharacteristic.value = "test".data(using: .utf8)
 
-    let stream = await characteristic.valueStream()
+    let stream = await characteristic.value.stream
 
     var called = false
     Task {
@@ -167,7 +162,7 @@ import Testing
 
     // give time for the stream to receive the new value
     try await Task.sleep(nanoseconds: 1_000_000)
-    #expect(called == false)
+    #expect(called == true)
   }
 
 }

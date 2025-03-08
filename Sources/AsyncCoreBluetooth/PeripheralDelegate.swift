@@ -137,42 +137,27 @@ extension Peripheral {
 
   func peripheral(
     _ cbPeripheral: CBMPeripheral, didUpdateValueFor cbCharacteristic: CBMCharacteristic,
-    error: Error?
+    error cbError: Error?
   ) async {
-    delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: error)
+    delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: cbError)
 
     let continuation = readCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
     let service = services?.first(where: { $0.uuid == cbCharacteristic.service?.uuid })
     let characteristic = await service?.characteristics?.first(where: {
       $0.uuid == cbCharacteristic.uuid
     })
-    await characteristic?.setValue(cbCharacteristic.value)
 
-    if let error {
-      continuation?.resume(throwing: error)
-      if await characteristic?.isNotifying == true {
-        await characteristic?.characteristicValueContinuations.values.forEach {
-          $0.yield(Result.failure(error))
-        }
+    let result: Result<Data, Error> =
+      if let cbError {
+        Result.failure(cbError)
+      } else if let value = cbCharacteristic.value {
+        Result.success(value)
+      } else {
+        Result.failure(AsyncCoreBluetoothError.unexpectedNilData)
       }
-      return
-    }
+    await characteristic?.update(result: result)
 
-    guard let value = cbCharacteristic.value else {
-      continuation?.resume(throwing: AsyncCoreBluetoothError.unexpectedNilData)
-      if await characteristic?.isNotifying == true {
-        await characteristic?.characteristicValueContinuations.values.forEach {
-          $0.yield(Result.failure(AsyncCoreBluetoothError.unexpectedNilData))
-        }
-      }
-      return
-    }
-    continuation?.resume(with: Result.success(value))
-    if await characteristic?.isNotifying == true {
-      await characteristic?.characteristicValueContinuations.values.forEach {
-        $0.yield(Result.success(value))
-      }
-    }
+    continuation?.resume(with: result)
   }
 
   func peripheral(
@@ -207,7 +192,7 @@ extension Peripheral {
     }
 
     // change the is notifying value on characteristic
-    await characteristic.setIsNotifying(cbCharacteristic.isNotifying)
+    await characteristic.update(isNotifying: cbCharacteristic.isNotifying)
     // make sure to add a way to listen for new notifivation values
 
     if let error {
