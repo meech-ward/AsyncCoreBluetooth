@@ -17,7 +17,7 @@ import Testing
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
     centralManager = CentralManager(forceMock: true)
-    _ = await centralManager.startStream().first(where: { $0 == .poweredOn })
+    _ = await centralManager.start().first(where: { $0 == .poweredOn })
 
     peripheral = await centralManager.retrievePeripherals(withIdentifiers: [
       mockPeripheral.identifier
@@ -28,7 +28,7 @@ import Testing
   @Test("Discover services returns services") func test_discoverServices_returnsServices()
     async throws
   {
-    _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
+    _ = await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
     let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
     guard let service = services[MockPeripheral.UUIDs.Device.service] else {
@@ -41,7 +41,7 @@ import Testing
   @Test("Discover services sets the services") func test_discoverServices_setsTheServices()
     async throws
   {
-    _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
+    _ = await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
     let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
     guard let service = services[MockPeripheral.UUIDs.Device.service],
@@ -59,7 +59,7 @@ import Testing
   func test_discoverServices_referencesThePeripheral()
     async throws
   {
-    _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
+    _ = await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
     let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
     guard let service = services[MockPeripheral.UUIDs.Device.service] else {
@@ -71,7 +71,7 @@ import Testing
 
   @Test("Discover services called multiple times back to back returns the same service")
   func test_discoverServices_calledMultipleTimesBackToBackReturnsTheSameService() async throws {
-    _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
+    _ = await centralManager.connect(peripheral).first(where: { $0 == .connected })
     let peripheral = self.peripheral!
 
     async let servicesAsync = [

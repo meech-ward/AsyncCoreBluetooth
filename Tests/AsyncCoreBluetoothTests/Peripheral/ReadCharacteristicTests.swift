@@ -19,12 +19,12 @@ import Testing
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
     centralManager = CentralManager(forceMock: true)
-    _ = await centralManager.startStream().first(where: { $0 == .poweredOn })
+    _ = await centralManager.start().first(where: { $0 == .poweredOn })
 
     peripheral = await centralManager.retrievePeripherals(withIdentifiers: [
       mockPeripheral.identifier
     ])[0]
-    _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
+    _ = await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
     let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
     guard let service = services[MockPeripheral.UUIDs.Device.service] else {

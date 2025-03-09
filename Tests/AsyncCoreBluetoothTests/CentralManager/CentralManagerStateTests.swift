@@ -14,10 +14,10 @@ import Testing
     CBMCentralManagerMock.simulateInitialState(.unknown)
     let centralManager = CentralManager(forceMock: true)
     await MainActor.run {
-      let state = centralManager.state.bleState
+      let state = centralManager.bleState.current
       #expect(state == .unknown)
     }
-    for await state in await centralManager.startStream() {
+    for await state in await centralManager.start() {
       #expect(state == .unknown)
       break
     }
@@ -30,11 +30,11 @@ import Testing
     await centralManager.start()
     // allow the delegate to set the new property
     try await Task.sleep(nanoseconds: 100000)
-    let state = await centralManager.bleState
+    let state = await centralManager.bleState.current
 
     #expect(state == .poweredOn)
     await MainActor.run {
-      let state = centralManager.state.bleState
+      let state = centralManager.bleState.current
       #expect(state == .poweredOn)
     }
   }
@@ -43,37 +43,9 @@ import Testing
   func test_initialStateSequence_afterStart() async throws {
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
     let centralManager = CentralManager(forceMock: true)
-    for await state in await centralManager.startStream().dropFirst(1) {
+    for await state in await centralManager.start().dropFirst(1) {
       #expect(state == .poweredOn)
       break
     }
-  }
-
-  @Test("Start with AsyncSequence removes the async sequence on task completion")
-  func test_startWithAsyncSequence_removesSequenceOnTaskCompletion() async throws {
-    let centralManager = CentralManager(forceMock: true)
-    var continuations = await centralManager.stateContinuations
-    #expect(continuations.count == 0)
-    for await _ in await centralManager.startStream() {
-      continuations = await centralManager.stateContinuations
-      #expect(continuations.count == 1)
-      break
-    }
-    // wait for the current tasks to finish
-    try await Task.sleep(nanoseconds: 10)
-    try await Task.sleep(nanoseconds: 10)
-    continuations = await centralManager.stateContinuations
-    #expect(continuations.count == 0)
-
-    for await _ in await centralManager.startStream() {
-      continuations = await centralManager.stateContinuations
-      #expect(continuations.count == 1)
-      break
-    }
-    // wait for the current tasks to finish
-    try await Task.sleep(nanoseconds: 10)
-    try await Task.sleep(nanoseconds: 10)
-    continuations = await centralManager.stateContinuations
-    #expect(continuations.count == 0)
   }
 }

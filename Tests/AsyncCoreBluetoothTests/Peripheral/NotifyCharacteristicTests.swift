@@ -8,7 +8,9 @@ import Testing
 
   let mockPeripheralDelegate = MockPeripheral.Delegate()
   lazy var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(
-    delegate: mockPeripheralDelegate, isKnown: true)
+    delegate: mockPeripheralDelegate,
+    isKnown: true
+  )
 
   var peripheral: Peripheral!
   var service: Service!
@@ -19,12 +21,12 @@ import Testing
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
     centralManager = CentralManager(forceMock: true)
-    _ = await centralManager.startStream().first(where: { $0 == .poweredOn })
+    _ = await centralManager.start().first(where: { $0 == .poweredOn })
 
     peripheral = await centralManager.retrievePeripherals(withIdentifiers: [
       mockPeripheral.identifier
     ])[0]
-    _ = try await centralManager.connect(peripheral).first(where: { $0 == .connected })
+    _ = await centralManager.connect(peripheral).first(where: { $0 == .connected })
 
     let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
     guard let service = services[MockPeripheral.UUIDs.Device.service] else {
@@ -34,7 +36,9 @@ import Testing
     self.service = service
 
     let characteristics = try await peripheral.discoverCharacteristics(
-      [MockPeripheral.UUIDs.Device.characteristic], for: service)
+      [MockPeripheral.UUIDs.Device.characteristic],
+      for: service
+    )
     guard let characteristic = characteristics[MockPeripheral.UUIDs.Device.characteristic] else {
       Issue.record("couldn't get characteristic")
       return
@@ -43,7 +47,8 @@ import Testing
   }
 
   @Test(
-    "Set notify true and false sets isNotifying true and false on the characteristic")
+    "Set notify true and false sets isNotifying true and false on the characteristic"
+  )
   func test_setNotifyTrueAndFalse_setsIsNotifyingTrueAndFalse() async throws {
 
     #expect(await characteristic.isNotifying.raw == false)
@@ -65,13 +70,16 @@ import Testing
 
     cbCharacteristic.value = "test".data(using: .utf8)
     await peripheral.peripheral(
-      cbPeripheral, didUpdateValueFor: characteristic.characteristic, error: nil)
+      cbPeripheral,
+      didUpdateValueFor: characteristic.characteristic,
+      error: nil
+    )
 
     #expect(await characteristic.value.raw == "test".data(using: .utf8))
   }
 
   @Test("recieves the new value when notifying is enabled", .timeLimit(.minutes(1)))
-    @available(iOS 17.0, macOS 15.0, tvOS 17.0, watchOS 10.0, *)
+  @available(iOS 17.0, macOS 15.0, tvOS 17.0, watchOS 10.0, *)
   func test_recievesNewValueWhenNotifyingIsEnabled() async throws {
     let peripheral = self.peripheral!
     let characteristic = self.characteristic!
@@ -82,7 +90,7 @@ import Testing
 
     try await peripheral.setNotifyValue(true, for: characteristic)
 
-    let stream = await characteristic.value.unwrappedStream()
+    let stream = await characteristic.value.stream
 
     var called = false
     Task {
@@ -96,16 +104,19 @@ import Testing
     try await Task.sleep(nanoseconds: 1_000_000)
 
     await peripheral.peripheral(
-      cbPeripheral, didUpdateValueFor: characteristic.characteristic, error: nil)
+      cbPeripheral,
+      didUpdateValueFor: characteristic.characteristic,
+      error: nil
+    )
 
     // give time for the stream to receive the new value
     try await Task.sleep(nanoseconds: 1_000_000)
     #expect(called == true)
   }
 
-  @Test("recieves the new error when notifying is enabled", .timeLimit(.minutes(1)))
+  @Test("recieves the new error", .timeLimit(.minutes(1)))
   @available(iOS 17.0, macOS 15.0, tvOS 17.0, watchOS 10.0, *)
-  func test_recievesNewErrorWhenNotifyingIsEnabled() async throws {
+  func test_recievesNewError() async throws {
     let peripheral = self.peripheral!
     let characteristic = self.characteristic!
     let cbPeripheral = await peripheral.cbPeripheral
@@ -115,11 +126,11 @@ import Testing
 
     try await peripheral.setNotifyValue(true, for: characteristic)
 
-    let stream = await characteristic.error.unwrappedStream()
+    let stream = await characteristic.error.stream
 
     var called = false
     Task {
-      for await error in stream {
+      for await error in stream.dropFirst() {
         #expect(error as? CharacteristicError == CharacteristicError.unableToFindCharacteristics)
         called = true
       }
@@ -127,9 +138,7 @@ import Testing
 
     try await Task.sleep(nanoseconds: 1_000_000)
 
-    await peripheral.peripheral(
-      cbPeripheral, didUpdateValueFor: characteristic.characteristic,
-      error: CharacteristicError.unableToFindCharacteristics)
+    await peripheral.peripheral(cbPeripheral, didUpdateValueFor: characteristic.characteristic, error: CharacteristicError.unableToFindCharacteristics)
 
     // give time for the stream to receive the new value
     try await Task.sleep(nanoseconds: 1_000_000)
@@ -144,6 +153,8 @@ import Testing
     let cbCharacteristic = await characteristic.characteristic
 
     cbCharacteristic.value = "test".data(using: .utf8)
+    // ensure an anitial value and not nil
+    await peripheral.peripheral(cbPeripheral, didUpdateValueFor: characteristic.characteristic, error: nil)
 
     let stream = await characteristic.value.stream
 
@@ -157,8 +168,7 @@ import Testing
 
     try await Task.sleep(nanoseconds: 1_000_000)
 
-    await peripheral.peripheral(
-      cbPeripheral, didUpdateValueFor: characteristic.characteristic, error: nil)
+    await peripheral.peripheral(cbPeripheral, didUpdateValueFor: characteristic.characteristic, error: nil)
 
     // give time for the stream to receive the new value
     try await Task.sleep(nanoseconds: 1_000_000)

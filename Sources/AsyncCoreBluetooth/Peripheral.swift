@@ -243,6 +243,7 @@ public actor Peripheral {
 
   // MARK: - Peripheral Creation and Caching
 
+
   static func createPeripheral(cbPeripheral: CBMPeripheral) async -> Peripheral {
     let peripheral = await Peripheral(cbPeripheral: cbPeripheral)
     await PeripheralStore.shared.store(peripheral, for: cbPeripheral.identifier)

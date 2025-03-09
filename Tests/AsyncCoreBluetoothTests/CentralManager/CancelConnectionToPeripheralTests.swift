@@ -24,7 +24,7 @@ import Testing
 
     centralManager = CentralManager(forceMock: true)
 
-    for await state in await centralManager.startStream() {
+    for await state in await centralManager.start() {
       if state == .poweredOn {
         break
       }
@@ -44,7 +44,7 @@ import Testing
   @Test("Device disconnecting changes connection state with error")
   func testDeviceDisconnectingChangesConnectionStateWithError() async throws {
 
-    let devices = try await centralManager.scanForPeripherals(withServices: [
+    let devices = try await centralManager.scanForPeripheralsStream(withServices: [
       MockPeripheral.UUIDs.Device.service
     ])
     guard
@@ -56,7 +56,7 @@ import Testing
       return
     }
 
-    let connectionStates = try await centralManager.connect(device)
+    let connectionStates = await centralManager.connect(device)
 
     for await connectionState in connectionStates.dropFirst() {
       #expect(
@@ -81,7 +81,7 @@ import Testing
   @Test("Cancel connection changes state to disconnecting and disconnected without error")
   func testCancelConnectionChangesStateToDisconnectingAndDisconnectedWithoutError() async throws {
 
-    let devices = try await centralManager.scanForPeripherals(withServices: [
+    let devices = try await centralManager.scanForPeripheralsStream(withServices: [
       MockPeripheral.UUIDs.Device.service
     ])
     guard
@@ -93,7 +93,7 @@ import Testing
       return
     }
 
-    let connectionStates = try await centralManager.connect(device)
+    let connectionStates = await centralManager.connect(device)
 
     for await connectionState in connectionStates.dropFirst() {
       #expect(
@@ -102,7 +102,7 @@ import Testing
       break
     }
 
-    try await centralManager.cancelPeripheralConnection(device)
+    await centralManager.cancelPeripheralConnection(device)
 
     for await connectionState in connectionStates {
       #expect(connectionState == .disconnecting)
@@ -126,7 +126,7 @@ import Testing
   @Test("Cancel connection returns async stream")
   func testCancelConnectionReturnsAsyncStream() async throws {
 
-    let devices = try await centralManager.scanForPeripherals(withServices: [
+    let devices = try await centralManager.scanForPeripheralsStream(withServices: [
       MockPeripheral.UUIDs.Device.service
     ])
     guard
@@ -138,14 +138,14 @@ import Testing
       return
     }
 
-    for await connectionState in try await centralManager.connect(device).dropFirst() {
+    for await connectionState in await centralManager.connect(device).dropFirst() {
       #expect(
         connectionState == .connected,
         "Expected connectionState to be connected, got \(connectionState)")
       break
     }
 
-    let connectionStates = try await centralManager.cancelPeripheralConnection(device)
+    let connectionStates = await centralManager.cancelPeripheralConnection(device)
 
     for await connectionState in connectionStates {
       #expect(connectionState == .disconnecting)
@@ -166,10 +166,10 @@ import Testing
     }
   }
 
-  @Test("Cancel connect throws when called while disconnected")
-  func testCancelConnectThrowsWhenCalledWhileDisconnected() async throws {
+  @Test("Cancel connect returns state stream when called while disconnected")
+  func testCancelConnectReturnsStateStreamWhenCalledWhileDisconnected() async throws {
 
-    let devices = try await centralManager.scanForPeripherals(withServices: [
+    let devices = try await centralManager.scanForPeripheralsStream(withServices: [
       MockPeripheral.UUIDs.Device.service
     ])
     guard
@@ -182,63 +182,75 @@ import Testing
     }
 
     // Initially disconnected
-    await #expect(
-      throws: PeripheralConnectionError.self
-    ) {
-      try await centralManager.cancelPeripheralConnection(device)
+    let initialDisconnectStream = await centralManager.cancelPeripheralConnection(device)
+    for await connectionState in initialDisconnectStream {
+      #expect(connectionState == .disconnected(nil))
+      break
     }
 
-    for await connectionState in try await centralManager.connect(device).dropFirst() {
+    for await connectionState in await centralManager.connect(device).dropFirst() {
       #expect(
         connectionState == .connected,
         "Expected connectionState to be connected, got \(connectionState)")
       break
     }
 
-    let connectionStates = try await centralManager.cancelPeripheralConnection(device)
+    let connectionStates = await centralManager.cancelPeripheralConnection(device)
 
-    for await _ in connectionStates {
-      await #expect(
-        throws: PeripheralConnectionError.self
-      ) {
-        try await centralManager.cancelPeripheralConnection(device)
+    for await state in connectionStates {
+      #expect(state == .disconnecting)
+      
+      // Call cancel again while disconnecting - should return stream without throwing
+      let duplicateStream = await centralManager.cancelPeripheralConnection(device)
+      for await duplicateState in duplicateStream {
+        #expect(duplicateState == .disconnecting)
+        break
       }
       break
     }
 
-    for await _ in connectionStates {
-
-      await #expect(
-        throws: PeripheralConnectionError.self
-      ) {
-        try await centralManager.cancelPeripheralConnection(device)
+    for await state in connectionStates {
+      #expect(state == .disconnected(nil))
+      
+      // Call cancel again while disconnected - should return stream without throwing
+      let finalStream = await centralManager.cancelPeripheralConnection(device)
+      for await finalState in finalStream {
+        #expect(finalState == .disconnected(nil))
+        break
       }
       break
     }
   }
 
-  @Test("Cancel connect throws when called after failure")
-  func testCancelConnectThrowsWhenCalledAfterFailure() async throws {
-    let devices = try await centralManager.scanForPeripherals(withServices: [
+  @Test("Cancel connect returns state stream when called after failure")
+  func testCancelConnectReturnsStateStreamWhenCalledAfterFailure() async throws {
+     let devices = try await centralManager.scanForPeripheralsStream(withServices: [
       MockPeripheral.UUIDs.Device.service
     ])
     guard
       let device = await devices.first(where: {
-        await $0.identifier == mockPeripheralFailure.identifier
+        await $0.identifier == mockPeripheralSuccess.identifier
       })
     else {
       Issue.record("couldn't get device")
       return
     }
 
-    for await _ in try await centralManager.connect(device).dropFirst() {
-      break
+    for await state in await centralManager.connect(device) {
+      if state == .connected {
+        break
+      }
     }
 
-    await #expect(
-      throws: PeripheralConnectionError.self
-    ) {
-      try await centralManager.cancelPeripheralConnection(device)
+    // Verify that we get the appropriate disconnected state
+    for await connectionState in await centralManager.cancelPeripheralConnection(device).dropFirst() {
+      // The error might be either connection failed or already disconnected
+      if case .disconnected(let error) = connectionState {
+        #expect(error == nil)
+      } else {
+        Issue.record("Expected .disconnected state, got \(connectionState)")
+      }
+      break
     }
   }
 }

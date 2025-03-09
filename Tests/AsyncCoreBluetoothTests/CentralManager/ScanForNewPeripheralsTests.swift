@@ -1,14 +1,17 @@
-@testable import AsyncCoreBluetooth
 import CoreBluetoothMock
 import Testing
+
+@testable import AsyncCoreBluetooth
 
 @Suite(.serialized) struct ScanForNewPeripheralsTests {
   var centralManager: CentralManager!
 
   var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(
-    delegate: MockPeripheral.Delegate())
+    delegate: MockPeripheral.Delegate()
+  )
   var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(
-    delegate: MockPeripheral.Delegate())
+    delegate: MockPeripheral.Delegate()
+  )
 
   init() async throws {
     CBMCentralManagerMock.simulateInitialState(.poweredOff)
@@ -16,7 +19,7 @@ import Testing
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
     centralManager = CentralManager(forceMock: true)
-    for await state in await centralManager.startStream() {
+    for await state in await centralManager.start() {
       if state == .poweredOn {
         break
       }
@@ -25,7 +28,7 @@ import Testing
 
   @Test("Scan returns devices")
   func testScanReturnsDevices() async throws {
-    let devices = try await centralManager.scanForPeripherals(withServices: [
+    let devices = try await centralManager.scanForPeripheralsStream(withServices: [
       MockPeripheral.UUIDs.Device.service
     ])
     for await device in devices {
@@ -44,7 +47,7 @@ import Testing
   func testScanThrowsWhenCalledMultipleTimes() async throws {
     let service = MockPeripheral.UUIDs.Device.service
     let centralManager = self.centralManager!
-    
+
     await #expect(throws: CentralManagerError.alreadyScanning.self) {
       try await withThrowingTaskGroup(of: Void.self) { group in
         group.addTask {
@@ -54,7 +57,7 @@ import Testing
           _ = try await centralManager.scanForPeripherals(withServices: [service])
         }
         try await group.next()
-        try await group.next()  
+        try await group.next()
       }
     }
   }
@@ -71,47 +74,47 @@ import Testing
 
   @Test("Scan ends when task is canceled")
   func testScanEndsWhenTaskIsCanceled() async throws {
-    func assertAllScanning(_ expectedState: Bool = false) async throws {
+    func assertAllScanning(_ expectedState: Bool = false, message: String = "") async throws {
       try await Task.sleep(nanoseconds: 1)
       try await Task.sleep(nanoseconds: 1)
-      
+
       // Internal State
-      let internalIsScanning = await centralManager.isScanning
+      let internalIsScanning = await centralManager.isScanning.current
       #expect(
         internalIsScanning == expectedState,
-        "internalIsScanning should be \(expectedState)"
+        "internalIsScanning should be \(expectedState) \(message)"
       )
 
       // Core Bluetooth state
       let isScanningCoreBLE = await centralManager.centralManager.isScanning
       #expect(
         isScanningCoreBLE == expectedState,
-        "isScanningCoreBLE should be \(expectedState)"
+        "isScanningCoreBLE should be \(expectedState) \(message)"
       )
 
       try await Task.sleep(nanoseconds: 1)
       // Public published state
-      let isScanning = await centralManager.isScanning
+      let isScanning = await centralManager.isScanning.current
       #expect(
         isScanning == expectedState,
-        "isScanning should be \(expectedState)"
+        "isScanning should be \(expectedState) \(message)"
       )
     }
 
     // false before scanning
-    try await assertAllScanning(false)
+    try await assertAllScanning(false, message: "before scanning")
 
     // true while scanning
-    for await device in try await centralManager.scanForPeripherals(withServices: [
-      MockPeripheral.UUIDs.Device.service
-    ]) {
+    for await device in try await centralManager.scanForPeripheralsStream(withServices: [MockPeripheral.UUIDs.Device.service]) {
       let id = await device.identifier
       #expect(id == mockPeripheral.identifier)
-      try await assertAllScanning(true)
+      try await assertAllScanning(true, message: "while scanning")
       break
     }
 
+    try await Task.sleep(for: .milliseconds(100))
+
     // false after scanning is complete
-    try await assertAllScanning(false)
+    try await assertAllScanning(false, message: "after scanning is complete")
   }
 }

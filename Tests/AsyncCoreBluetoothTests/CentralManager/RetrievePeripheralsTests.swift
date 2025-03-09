@@ -19,7 +19,7 @@ import Testing
     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
     centralManager = CentralManager(forceMock: true)
-    for await state in await centralManager.startStream() {
+    for await state in await centralManager.start() {
       if state == .poweredOn {
         break
       }
@@ -34,22 +34,24 @@ import Testing
     #expect(devices.count == 2)
   }
 
-  @Test("Doesn't return the same peripherals each time when retrieving with identifiers")
+  @Test("returns the same peripherals each time when retrieving with identifiers")
   func testReturnsSamePeripheralsEachTime() async throws {
-    // it needs to returna new async core bluetooth peripheral each time and do a complete setup of the delegate
+    // it used to need to return a new async core bluetooth peripheral each time and do a complete setup of the delegate
+    // this was changed to reuse the peripheral to make it easier to avoid race conditions where the scanned peripheral might be scanned more than once and accidentally used more than once
     let devicesOne = await centralManager.retrievePeripherals(withIdentifiers: [
       mockPeripheral1.identifier, mockPeripheral2.identifier,
     ])
     let devicesTwo = await centralManager.retrievePeripherals(withIdentifiers: [
       mockPeripheral1.identifier, mockPeripheral2.identifier,
     ])
-    #expect(devicesOne[0] !== devicesTwo[0])
-    #expect(devicesOne[1] !== devicesTwo[1])
+    #expect(devicesOne[0] === devicesTwo[0])
+    #expect(devicesOne[1] === devicesTwo[1])
   }
 
-  @Test("Returns a different peripheral from scanning and connecting")
+  @Test("Returns the same peripheral from scanning and connecting")
   func testReturnsSamePeripheralsFromScanningAndConnecting() async throws {
-    let devices = try await centralManager.scanForPeripherals(withServices: [
+    // see comment above as this used to test that they were different
+    let devices = try await centralManager.scanForPeripheralsStream(withServices: [
       MockPeripheral.UUIDs.Device.service
     ])
     guard
@@ -59,13 +61,13 @@ import Testing
       return
     }
 
-    _ = try await centralManager.connect(device).first(where: { $0 == .connected })
+    _ = await centralManager.connect(device).first(where: { $0 == .connected })
 
     let retrievedDevices = await centralManager.retrievePeripherals(withIdentifiers: [
       mockPeripheral3.identifier
     ])
 
     #expect(retrievedDevices.count == 1)
-    #expect(retrievedDevices[0] !== device)
+    #expect(retrievedDevices[0] === device)
   }
 }

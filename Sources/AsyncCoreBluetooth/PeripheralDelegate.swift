@@ -102,7 +102,7 @@ extension Peripheral {
     var servicesMap: [CBUUID: Service] = [:]
     for cbService in cbServices {
       // this is new needs to be tested
-      if let service = self.services?.first(where: { $0.uuid == cbService.uuid })  {
+      if let service = self.services?.first(where: { $0.uuid == cbService.uuid }) {
         servicesMap[cbService.uuid] = service
         continue
       }
@@ -148,11 +148,7 @@ extension Peripheral {
     continuation?.resume(with: Result.success(characteristicsMap))
   }
 
-  func peripheral(
-    _ cbPeripheral: CBMPeripheral,
-    didUpdateValueFor cbCharacteristic: CBMCharacteristic,
-    error cbError: Error?
-  ) async {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didUpdateValueFor cbCharacteristic: CBMCharacteristic, error cbError: Error?) async {
     delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: cbError)
 
     let continuation = readCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
