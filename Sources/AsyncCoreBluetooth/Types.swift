@@ -16,7 +16,6 @@ class PeripheralWrapper: @unchecked Sendable {
 }
 
 /// See CoreBluetoothMock.CBMManagerTypes
-public typealias CentralManagerBLEState = CBMManagerState
 
 public typealias PeripheralBLEState = CBMPeripheralState
 
@@ -48,9 +47,17 @@ public enum ServiceError: Error {
   case unableToFindServices
 }
 
-public enum CharacteristicError: Error {
+public enum CharacteristicError: LocalizedError {
   case unableToFindCharacteristics
   case unableToFindCharacteristicService
+  var localizedDescription: String {
+    switch self {
+    case .unableToFindCharacteristics:
+      return NSLocalizedString("Unable to find characteristics", comment: "")
+    case .unableToFindCharacteristicService:
+      return NSLocalizedString("Unable to find characteristic service", comment: "")
+    }
+  }
 }
 
 public enum AdvertisementDataValue: Sendable {

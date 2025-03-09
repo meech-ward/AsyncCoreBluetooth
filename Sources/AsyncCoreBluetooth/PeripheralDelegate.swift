@@ -5,8 +5,8 @@ import Foundation
 
 // CBMPeripheralDelegate
 extension Peripheral {
-
   // MARK: - Peripheral Events not yet implemented
+
   // but can still be accessed via the delegate
 
   func peripheralDidUpdateName(_ cbPeripheral: CBMPeripheral) {
@@ -75,6 +75,7 @@ extension Peripheral {
   // MARK: - Peripheral Events
 
   func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) async {
+    print("discovered services")
     delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
     let continuation = discoverServicesContinuations.popFirst()
     if let error {
@@ -97,12 +98,8 @@ extension Peripheral {
     continuation?.resume(with: Result.success(servicesMap))
   }
 
-  func peripheral(
-    _ cbPeripheral: CBMPeripheral, didDiscoverCharacteristicsFor cbmService: CBMService,
-    error: Error?
-  ) async {
-
-    delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
+  func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverCharacteristicsFor cbmService: CBMService, error: Error?) async {
+    delegate?.peripheral(cbPeripheral, didDiscoverCharacteristicsFor: cbmService, error: error)
     let continuation = discoverCharacteristicsContinuations[cbmService.uuid]?.popFirst()
     if let error {
       continuation?.resume(throwing: error)
@@ -201,7 +198,6 @@ extension Peripheral {
     }
     continuation?.resume(with: Result.success(cbCharacteristic.isNotifying))
   }
-
 }
 
 class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
@@ -241,7 +237,8 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   ) {
     Task {
       await peripheral.peripheral(
-        cbPeripheral, didDiscoverIncludedServicesFor: service, error: error)
+        cbPeripheral, didDiscoverIncludedServicesFor: service, error: error
+      )
     }
   }
 
@@ -250,7 +247,8 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   ) {
     Task {
       await peripheral.peripheral(
-        cbPeripheral, didDiscoverCharacteristicsFor: service, error: error)
+        cbPeripheral, didDiscoverCharacteristicsFor: service, error: error
+      )
     }
   }
 
@@ -277,7 +275,8 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   ) {
     Task {
       await peripheral.peripheral(
-        cbPeripheral, didUpdateNotificationStateFor: characteristic, error: error)
+        cbPeripheral, didUpdateNotificationStateFor: characteristic, error: error
+      )
     }
   }
 
@@ -287,7 +286,8 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   ) {
     Task {
       await peripheral.peripheral(
-        cbPeripheral, didDiscoverDescriptorsFor: characteristic, error: error)
+        cbPeripheral, didDiscoverDescriptorsFor: characteristic, error: error
+      )
     }
   }
 

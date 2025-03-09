@@ -5,9 +5,7 @@ import Foundation
 // CBMCentralManagerDelegate
 extension CentralManager {
   func centralManagerDidUpdateState(_ central: CBMCentralManager) async {
-    bleState = central.state
-    stateContinuations.values.forEach { $0.yield(bleState) }
-
+    _bleState.update(central.state)
     delegate?.centralManagerDidUpdateState(central)
   }
 
@@ -21,10 +19,17 @@ extension CentralManager {
       uniqueKeysWithValues: advertisementData.map { ($0.key, $0.originalValue) }
     )
     delegate?.centralManager(central, didDiscover: cbPeripheral, advertisementData: originalFormatAdvertisementData, rssi: RSSI)
+
+    let p = await Peripheral.createPeripheral(cbPeripheral: cbPeripheral)
+
+    if _peripheralsScanned.current.firstIndex(where: { $0.identifier == p.identifier }) != nil {
+      // the peripheral with identifier already exists
+      return
+    }
+    _peripheralsScanned.mutate { $0.append(p) }
     guard let scanForPeripheralsContinuation = scanForPeripheralsContinuation else {
       return
     }
-    let p = await Peripheral.createPeripheral(cbPeripheral: cbPeripheral)
     scanForPeripheralsContinuation.yield(p)
   }
 

@@ -19,7 +19,8 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/meech-ward/IOS-CoreBluetooth-Mock.git", branch: "main"),
-    .package(url: "https://github.com/meech-ward/AsyncObservable.git", branch: "main"),
+//    .package(url: "https://github.com/meech-ward/AsyncObservable.git", branch: "main"),
+    .package(path: "../AsyncObservable"),
     .package(
       url: "https://github.com/apple/swift-collections.git",
       .upToNextMinor(from: "1.1.0")

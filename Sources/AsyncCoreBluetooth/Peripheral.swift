@@ -1,3 +1,4 @@
+import AsyncObservable
 @preconcurrency import CoreBluetooth
 @preconcurrency import CoreBluetoothMock
 import DequeModule
@@ -191,32 +192,31 @@ public actor Peripheral {
   func setConnectionState(_ state: PeripheralConnectionState) async {
     connectionState = state
 
-    if case .disconnected(_) = state {
+    if case .disconnected = state {
       // cancel all discovery continuations
-      discoverCharacteristicsContinuations.forEach {
-        $0.value.forEach { $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking) }
+      for discoverCharacteristicsContinuation in discoverCharacteristicsContinuations {
+        discoverCharacteristicsContinuation.value.forEach { $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking) }
       }
       discoverCharacteristicsContinuations.removeAll()
-      discoverServicesContinuations.forEach {
-        $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking)
+      for discoverServicesContinuation in discoverServicesContinuations {
+        discoverServicesContinuation.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking)
       }
       discoverServicesContinuations.removeAll()
 
-      readCharacteristicValueContinuations.forEach {
-        $0.value.forEach { $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking) }
+      for readCharacteristicValueContinuation in readCharacteristicValueContinuations {
+        readCharacteristicValueContinuation.value.forEach { $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking) }
       }
       readCharacteristicValueContinuations.removeAll()
 
-      writeCharacteristicWithResponseContinuations.forEach {
-        $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking)
+      for writeCharacteristicWithResponseContinuation in writeCharacteristicWithResponseContinuations {
+        writeCharacteristicWithResponseContinuation.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking)
       }
       writeCharacteristicWithResponseContinuations.removeAll()
 
-      notifyCharacteristicValueContinuations.forEach {
-        $0.value.forEach { $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking) }
+      for notifyCharacteristicValueContinuation in notifyCharacteristicValueContinuations {
+        notifyCharacteristicValueContinuation.value.forEach { $0.resume(throwing: PeripheralConnectionError.disconnectedWhileWorking) }
       }
       notifyCharacteristicValueContinuations.removeAll()
-
 
       // My assumption is that somewhere there is a loop listening for the connection state
       // On disconnect, the workflow for discovering and connection should be re triggered
@@ -271,23 +271,25 @@ public actor Peripheral {
 
   /// Discovers the specified services of the peripheral.
   // internally manage the state continuations
-  var discoverServicesContinuations = Deque<
-    CheckedContinuation<[CBUUID /* service uuid */: Service], Error>
-  >()
+  var discoverServicesContinuations = Deque<CheckedContinuation<[CBUUID /* service uuid */: Service], Error>>()
   @discardableResult
-  public func discoverServices(_ serviceUUIDs: [CBUUID]?) async throws
-    -> [CBUUID /* service uuid */:
-    Service]
-  {
+  public func discoverServices(_ serviceUUIDs: [CBUUID]?) async throws -> [CBUUID /* service uuid */: Service] {
     return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation { continuation in
-
         discoverServicesContinuations.append(continuation)
         cbPeripheral.discoverServices(serviceUUIDs)
       }
     } onCancel: {
       // need to figure out how to cancel this nicely
     }
+  }
+
+  @discardableResult
+  public func discoverService(_ serviceUUID: CBUUID) async throws -> Service {
+    guard let service = try await discoverServices([serviceUUID])[serviceUUID] else {
+      throw ServiceError.unableToFindServices
+    }
+    return service
   }
 
   // public func discoverServices(serviceUUIDs: [UUID]?) async -> [Service] {
@@ -299,16 +301,10 @@ public actor Peripheral {
 
   // MARK: - Discovering Characteristics
 
-  var discoverCharacteristicsContinuations:
-    [CBUUID /* service uuid */: Deque<
-      CheckedContinuation<[CBUUID /* characteristic uuid */: Characteristic], Error>
-    >] = [:]
+  var discoverCharacteristicsContinuations: [CBUUID /* service uuid */: Deque<CheckedContinuation<[CBUUID /* characteristic uuid */: Characteristic], Error>>] = [:]
 
   @discardableResult
-  public func discoverCharacteristics(
-    _ characteristicUUIDs: [CBUUID]?,
-    for service: Service
-  ) async throws -> [CBUUID: Characteristic] {
+  public func discoverCharacteristics(_ characteristicUUIDs: [CBUUID]?, for service: Service) async throws -> [CBUUID: Characteristic] {
     return try await withCheckedThrowingContinuation { continuation in
       if discoverCharacteristicsContinuations[service.uuid] == nil {
         discoverCharacteristicsContinuations[service.uuid] = []
@@ -316,6 +312,14 @@ public actor Peripheral {
       discoverCharacteristicsContinuations[service.uuid]?.append(continuation)
       cbPeripheral.discoverCharacteristics(characteristicUUIDs, for: service.service)
     }
+  }
+
+  @discardableResult
+  public func discoverCharacteristic(_ characteristicUUID: CBUUID, for service: Service) async throws -> Characteristic {
+    guard let characteristic = try await discoverCharacteristics([characteristicUUID], for: service)[characteristicUUID] else {
+      throw CharacteristicError.unableToFindCharacteristics
+    }
+    return characteristic
   }
 
   var readCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Data, Error>>] = [:]
@@ -328,9 +332,9 @@ public actor Peripheral {
 
 // MARK: - Read, Write, Notify
 
-extension Peripheral {
+public extension Peripheral {
   @discardableResult
-  public func readValue(for characteristic: Characteristic) async throws -> Data {
+  func readValue(for characteristic: Characteristic) async throws -> Data {
     return try await withCheckedThrowingContinuation { continuation in
       if readCharacteristicValueContinuations[characteristic.uuid] == nil {
         readCharacteristicValueContinuations[characteristic.uuid] = []
@@ -340,7 +344,7 @@ extension Peripheral {
     }
   }
 
-  public func writeValueWithResponse(
+  func writeValueWithResponse(
     _ value: Data, for characteristic: Characteristic
   ) async throws {
     return try await withCheckedThrowingContinuation { continuation in
@@ -350,14 +354,14 @@ extension Peripheral {
   }
 
   /// Writes a value to a characteristic without waiting for a response.
-  public func writeValueWithoutResponse(
+  func writeValueWithoutResponse(
     _ value: Data, for characteristic: Characteristic
   ) {
     cbPeripheral.writeValue(value, for: characteristic.characteristic, type: .withoutResponse)
   }
 
   @discardableResult
-  public func setNotifyValue(_ enabled: Bool, for characteristic: Characteristic) async throws
+  func setNotifyValue(_ enabled: Bool, for characteristic: Characteristic) async throws
     -> Bool
   {
     if await characteristic.isNotifying.raw == enabled {
