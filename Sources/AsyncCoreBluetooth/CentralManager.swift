@@ -150,7 +150,6 @@ public actor CentralManager {
   /// ```
   //  @MainActor public internal(set) var state = CentralManagerState()
 
-
   /// Starts the central manager and starts monitoring the `CentralManagerState` changes.
   ///
   /// This method is safe to call multiple times.
@@ -189,6 +188,20 @@ public actor CentralManager {
   @MainActor
   public var peripheralsScanned: some AsyncObservableReadOnly<[Peripheral]> { _peripheralsScanned }
 
+  // so we don't handle the same peripheral multiple times
+  private var _peripheralsScannedIds: Set<UUID> = []
+  internal func clearPeripheralsScanned() {
+    _peripheralsScannedIds.removeAll()
+    _peripheralsScanned.update([])
+  }
+  internal func addPeripheralsScannedId(id: UUID) -> Bool {
+    if _peripheralsScannedIds.contains(id) {
+      return false
+    }
+    _peripheralsScannedIds.insert(id)
+    return true
+  }
+
   private var servicesToScanFor: [CBUUID]?
 
   /// Scans for peripherals that are advertising services and returns an AsyncStream of discovered peripherals.
@@ -226,7 +239,7 @@ public actor CentralManager {
     }
     servicesToScanFor = services
     _isScanning.update(true)
-    _peripheralsScanned.update([])
+    clearPeripheralsScanned()
     return AsyncStream { [weak self] continuation in
       guard let self = self else {
         return
@@ -276,7 +289,7 @@ public actor CentralManager {
     }
     servicesToScanFor = services
     _isScanning.update(true)
-    _peripheralsScanned.update([])
+    clearPeripheralsScanned()
     centralManager.scanForPeripherals(withServices: services)
   }
 
@@ -334,7 +347,6 @@ public actor CentralManager {
   ///
   /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518984-stopscan
   public func stopScan() {
-    print("stop scan")
     centralManager.stopScan()
     setScanForPeripheralsContinuation(nil)
     _isScanning.update(false)

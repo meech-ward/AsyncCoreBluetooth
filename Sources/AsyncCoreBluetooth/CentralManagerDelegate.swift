@@ -18,7 +18,8 @@ extension CentralManager {
       uniqueKeysWithValues: advertisementData.map { ($0.key, $0.originalValue) }
     )
     delegate?.centralManager(central, didDiscover: cbPeripheral, advertisementData: originalFormatAdvertisementData, rssi: RSSI)
-    if _peripheralsScanned.current.firstIndex(where: { $0.identifier == cbPeripheral.identifier }) != nil {
+    if !addPeripheralsScannedId(id: cbPeripheral.identifier) {
+      print("already exists, don't do anything with it")
       // the peripheral with identifier already exists
       return
     }
