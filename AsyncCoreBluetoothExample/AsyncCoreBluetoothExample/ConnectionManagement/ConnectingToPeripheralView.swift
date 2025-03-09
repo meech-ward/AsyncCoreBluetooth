@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ConnectingToPeripheralView: View {
   let connectionManager: PeripheralConnectionManager
+  let removeDevice: () -> Void
     
   var body: some View {
     VStack(spacing: 16) {
@@ -30,7 +31,8 @@ struct ConnectingToPeripheralView: View {
         message: error.localizedDescription,
         color: .red
       )
-    } else if let peripheral = connectionManager.peripheral.observable {
+    }
+    if let peripheral = connectionManager.peripheral.observable {
       switch peripheral.state.connectionState {
       case .disconnected(let cBError):
         statusView(
@@ -74,6 +76,7 @@ struct ConnectingToPeripheralView: View {
         )
         reconnectButton
       }
+      removeDeviceButton
     }
   }
     
@@ -102,6 +105,20 @@ struct ConnectingToPeripheralView: View {
       }
     } label: {
       Label("Reconnect", systemImage: "arrow.clockwise")
+        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .background(Color.blue)
+        .foregroundColor(.white)
+        .cornerRadius(8)
+    }
+    .padding(.top, 8)
+  }
+  
+  private var removeDeviceButton: some View {
+    Button {
+      removeDevice()
+    } label: {
+      Label("Remove Device", systemImage: "trash.circle")
         .padding(.vertical, 8)
         .padding(.horizontal, 16)
         .background(Color.blue)

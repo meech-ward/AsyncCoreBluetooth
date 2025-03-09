@@ -1,5 +1,4 @@
-@preconcurrency
-import CoreBluetoothMock
+@preconcurrency import CoreBluetoothMock
 import Foundation
 
 // CBMCentralManagerDelegate
@@ -19,13 +18,18 @@ extension CentralManager {
       uniqueKeysWithValues: advertisementData.map { ($0.key, $0.originalValue) }
     )
     delegate?.centralManager(central, didDiscover: cbPeripheral, advertisementData: originalFormatAdvertisementData, rssi: RSSI)
-
-    let p = await Peripheral.createPeripheral(cbPeripheral: cbPeripheral)
-
-    if _peripheralsScanned.current.firstIndex(where: { $0.identifier == p.identifier }) != nil {
+    if _peripheralsScanned.current.firstIndex(where: { $0.identifier == cbPeripheral.identifier }) != nil {
       // the peripheral with identifier already exists
       return
     }
+    let p =
+      if let peripheral = await Peripheral.getPeripheral(cbPeripheral: cbPeripheral) {
+        peripheral
+      }
+      else {
+        await Peripheral.createPeripheral(cbPeripheral: cbPeripheral)
+      }
+
     _peripheralsScanned.mutate { $0.append(p) }
     guard let scanForPeripheralsContinuation = scanForPeripheralsContinuation else {
       return
@@ -81,11 +85,11 @@ class CentralManagerDelegate: NSObject, CBMCentralManagerDelegate, @unchecked Se
 
   func centralManager(_: CBMCentralManager, willRestoreState dict: [String: Any]) {
     print(dict)
-//    Task {
-//      let d = dict
-//      await centralManager.centralManager(central, willRestoreState: d)
-//      await centralManager.delegate?.centralManager(central, willRestoreState: d)
-//    }
+    //    Task {
+    //      let d = dict
+    //      await centralManager.centralManager(central, willRestoreState: d)
+    //      await centralManager.delegate?.centralManager(central, willRestoreState: d)
+    //    }
   }
 
   private func parseAdvertisementData(_ advertisementData: [String: Any]) -> [AdvertisementDataValue] {

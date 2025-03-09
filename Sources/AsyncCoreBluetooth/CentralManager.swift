@@ -388,19 +388,19 @@ public actor CentralManager {
   /// Cancels an active or pending local connection to a peripheral.
   ///
   /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518952-cancelperipheralconnection
-  @discardableResult public func cancelPeripheralConnection(_ peripheral: Peripheral) async throws
+  @discardableResult public func cancelPeripheralConnection(_ peripheral: Peripheral) async
     -> AsyncStream<PeripheralConnectionState>
   {
     // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
     let currentConnectionState = await peripheral.connectionState
     if case .disconnected = currentConnectionState {
-      throw PeripheralConnectionError.alreadyDisconnected
+      return await connectionState(forPeripheral: peripheral)
     }
     if case .failedToConnect = currentConnectionState {
-      throw PeripheralConnectionError.failedToConnect
+      return await connectionState(forPeripheral: peripheral)
     }
     guard currentConnectionState != .disconnecting else {
-      throw PeripheralConnectionError.alreadyDisconnecting
+      return await connectionState(forPeripheral: peripheral)
     }
 
     await peripheral.setConnectionState(.disconnecting)
@@ -427,7 +427,14 @@ public actor CentralManager {
     let cbPeripherals = centralManager.retrieveConnectedPeripherals(withServices: services)
     var peripherals = [Peripheral]()
     for cbPeripheral in cbPeripherals {
-      peripherals.append(await Peripheral.createPeripheral(cbPeripheral: cbPeripheral))
+      if let peripheral = await Peripheral.getPeripheral(cbPeripheral: cbPeripheral) {
+        print("got connected peripheral \(ObjectIdentifier(peripheral))")
+        peripherals.append(peripheral)
+        continue
+      }
+      let peripheral = await Peripheral.createPeripheral(cbPeripheral: cbPeripheral)
+      print("created connected peripheral \(ObjectIdentifier(peripheral))")
+      peripherals.append(peripheral)
     }
     return peripherals
   }
@@ -437,7 +444,15 @@ public actor CentralManager {
     let cbPeripherals = centralManager.retrievePeripherals(withIdentifiers: identifiers)
     var peripherals = [Peripheral]()
     for cbPeripheral in cbPeripherals {
-      peripherals.append(await Peripheral.createPeripheral(cbPeripheral: cbPeripheral))
+      if let peripheral = await Peripheral.getPeripheral(cbPeripheral: cbPeripheral) {
+        print("got peripheral \(ObjectIdentifier(peripheral))")
+        peripherals.append(peripheral)
+        continue
+      }
+      let peripheral = await Peripheral.createPeripheral(cbPeripheral: cbPeripheral)
+      peripherals.append(peripheral)
+      print("created peripheral \(ObjectIdentifier(peripheral))")
+
     }
     return peripherals
   }

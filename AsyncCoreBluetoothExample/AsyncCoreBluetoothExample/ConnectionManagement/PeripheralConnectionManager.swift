@@ -61,17 +61,25 @@ actor PeripheralConnectionManager {
   }
 
   let peripheral: AsyncObservable<Peripheral?> = .init(nil)
+  let heartRateService: AsyncObservable<Service?> = .init(nil)
+  let heartRateMeasurementCharacteristic: AsyncObservable<Characteristic?> = .init(nil)
+  let automationIOService: AsyncObservable<Service?> = .init(nil)
+  let ledControlCharacteristic: AsyncObservable<Characteristic?> = .init(nil)
+
   var connectTask: Task<Void, Never>?
 
   func stop() async {
-    do {
-      if let peripheral = peripheral.current {
-        if await peripheral.connectionState == .connected {
-          try await central.cancelPeripheralConnection(peripheral)
+    heartRateService.update(nil)
+    heartRateMeasurementCharacteristic.update(nil)
+    automationIOService.update(nil)
+    ledControlCharacteristic.update(nil)
+
+    if let peripheral = peripheral.current {
+      for await state in await central.cancelPeripheralConnection(peripheral) {
+        if case .disconnected = state {
+          break
         }
       }
-    } catch {
-      state.update(.error(error))
     }
 
     connectTask?.cancel()
@@ -91,11 +99,15 @@ actor PeripheralConnectionManager {
     await manageConnection(peripheral: peripheral)
   }
 
-  func manageConnection(peripheral: Peripheral) async {
+  private func manageConnection(peripheral: Peripheral) async {
     await stop()
     connectTask = Task {
       for await state in await central.connect(peripheral) {
         // this is also where auto retry logic can happen
+        print("state: \(state)")
+        if Task.isCancelled {
+          break
+        }
 
         guard state == .connected else {
           self.state.update(.notReady)
@@ -113,8 +125,12 @@ actor PeripheralConnectionManager {
 
   private func discoverServicesAndCharacteristics(peripheral: Peripheral) async throws {
     let heartRateService = try await peripheral.discoverService(BLEIdentifiers.Service.heartRate)
-    try await peripheral.discoverCharacteristic(BLEIdentifiers.Characteristic.heartRateMeasurement, for: heartRateService)
+    let heartRateMeasurementCharacteristic = try await peripheral.discoverCharacteristic(BLEIdentifiers.Characteristic.heartRateMeasurement, for: heartRateService)
     let automationIOService = try await peripheral.discoverService(BLEIdentifiers.Service.automationIO)
-    try await peripheral.discoverCharacteristic(BLEIdentifiers.Characteristic.ledControl, for: automationIOService)
+    let ledControlCharacteristic = try await peripheral.discoverCharacteristic(BLEIdentifiers.Characteristic.ledControl, for: automationIOService)
+    self.heartRateService.update(heartRateService)
+    self.heartRateMeasurementCharacteristic.update(heartRateMeasurementCharacteristic)
+    self.automationIOService.update(automationIOService)
+    self.ledControlCharacteristic.update(ledControlCharacteristic)
   }
 }

@@ -50,7 +50,8 @@ public enum ServiceError: Error {
 public enum CharacteristicError: LocalizedError {
   case unableToFindCharacteristics
   case unableToFindCharacteristicService
-  var localizedDescription: String {
+  
+  public var errorDescription: String? {
     switch self {
     case .unableToFindCharacteristics:
       return NSLocalizedString("Unable to find characteristics", comment: "")

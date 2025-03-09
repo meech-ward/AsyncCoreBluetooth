@@ -15,7 +15,8 @@ extension Peripheral {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didModifyServices invalidatedServices: [CBMService]
+    _ cbPeripheral: CBMPeripheral,
+    didModifyServices invalidatedServices: [CBMService]
   ) {
     print("peripheral \(cbPeripheral) didModifyServices \(invalidatedServices)")
     delegate?.peripheral(cbPeripheral, didModifyServices: invalidatedServices)
@@ -27,7 +28,9 @@ extension Peripheral {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didDiscoverIncludedServicesFor service: CBMService, error: Error?
+    _ cbPeripheral: CBMPeripheral,
+    didDiscoverIncludedServicesFor service: CBMService,
+    error: Error?
   ) {
     print(
       "peripheral \(cbPeripheral) didDiscoverIncludedServicesFor \(service) error \(String(describing: error))"
@@ -36,7 +39,8 @@ extension Peripheral {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didDiscoverDescriptorsFor characteristic: CBMCharacteristic,
+    _ cbPeripheral: CBMPeripheral,
+    didDiscoverDescriptorsFor characteristic: CBMCharacteristic,
     error: Error?
   ) {
     print(
@@ -45,7 +49,9 @@ extension Peripheral {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didUpdateValueFor descriptor: CBMDescriptor, error: Error?
+    _ cbPeripheral: CBMPeripheral,
+    didUpdateValueFor descriptor: CBMDescriptor,
+    error: Error?
   ) {
     print(
       "peripheral \(cbPeripheral) didUpdateValueFor \(descriptor) error \(String(describing: error))"
@@ -53,7 +59,9 @@ extension Peripheral {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didWriteValueFor descriptor: CBMDescriptor, error: Error?
+    _ cbPeripheral: CBMPeripheral,
+    didWriteValueFor descriptor: CBMDescriptor,
+    error: Error?
   ) {
     print(
       "peripheral \(cbPeripheral) didWriteValueFor \(descriptor) error \(String(describing: error))"
@@ -74,8 +82,12 @@ extension Peripheral {
 
   // MARK: - Peripheral Events
 
+  // TODO: this needs to be tested more
+  // like if you call mulltiple discover services
+  // and then discover characteristics
+  // will the characteristics be added to the correct service
   func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) async {
-    print("discovered services")
+    print("discovered service \(cbPeripheral.services) \(discoverServicesContinuations.count) \(self.identifier) \(ObjectIdentifier(self))")
     delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
     let continuation = discoverServicesContinuations.popFirst()
     if let error {
@@ -86,11 +98,17 @@ extension Peripheral {
       continuation?.resume(throwing: ServiceError.unableToFindServices)
       return
     }
-    var services = [Service]()
+    var services = self.services ?? [Service]()
     var servicesMap: [CBUUID: Service] = [:]
     for cbService in cbServices {
+      // this is new needs to be tested
+      if let service = self.services?.first(where: { $0.uuid == cbService.uuid })  {
+        servicesMap[cbService.uuid] = service
+        continue
+      }
       let service = await Service(service: cbService, peripheral: self)
       services.append(service)
+      // only new ones to th request, the requested services
       servicesMap[cbService.uuid] = service
     }
 
@@ -125,15 +143,14 @@ extension Peripheral {
       characteristicsMap[cbCharacteristic.uuid] = characteristic
     }
 
-    delegate?.peripheral(cbPeripheral, didDiscoverCharacteristicsFor: cbmService, error: error)
-
     await service.setCharacteristics(characteristics)
 
     continuation?.resume(with: Result.success(characteristicsMap))
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didUpdateValueFor cbCharacteristic: CBMCharacteristic,
+    _ cbPeripheral: CBMPeripheral,
+    didUpdateValueFor cbCharacteristic: CBMCharacteristic,
     error cbError: Error?
   ) async {
     delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: cbError)
@@ -147,9 +164,11 @@ extension Peripheral {
     let result: Result<Data, Error> =
       if let cbError {
         Result.failure(cbError)
-      } else if let value = cbCharacteristic.value {
+      }
+      else if let value = cbCharacteristic.value {
         Result.success(value)
-      } else {
+      }
+      else {
         Result.failure(AsyncCoreBluetoothError.unexpectedNilData)
       }
     await characteristic?.update(result: result)
@@ -157,33 +176,28 @@ extension Peripheral {
     continuation?.resume(with: result)
   }
 
-  func peripheral(
-    _ cbPeripheral: CBMPeripheral, didWriteValueFor characteristic: CBMCharacteristic, error: Error?
-  ) {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didWriteValueFor characteristic: CBMCharacteristic, error: Error?) {
     delegate?.peripheral(cbPeripheral, didWriteValueFor: characteristic, error: error)
 
     let continuation = writeCharacteristicWithResponseContinuations.popFirst()
     if let error {
       continuation?.resume(throwing: error)
-    } else {
+    }
+    else {
       continuation?.resume()
     }
   }
 
-  func peripheral(
-    _ cbPeripheral: CBMPeripheral,
-    didUpdateNotificationStateFor cbCharacteristic: CBMCharacteristic,
-    error: Error?
-  ) async {
+  func peripheral(_ cbPeripheral: CBMPeripheral, didUpdateNotificationStateFor cbCharacteristic: CBMCharacteristic, error: Error?) async {
     delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: error)
     let continuation = notifyCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
-
     guard
       let service = services?.first(where: { $0.uuid == cbCharacteristic.service?.uuid }),
       let characteristic = await service.characteristics?.first(where: {
         $0.uuid == cbCharacteristic.uuid
       })
     else {
+      print("unable to find characteristic \(cbCharacteristic.uuid) for service \(cbCharacteristic.service?.uuid) \(cbPeripheral.services))")
       continuation?.resume(throwing: CharacteristicError.unableToFindCharacteristicService)
       return
     }
@@ -213,7 +227,8 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didModifyServices invalidatedServices: [CBMService]
+    _ cbPeripheral: CBMPeripheral,
+    didModifyServices invalidatedServices: [CBMService]
   ) {
     Task {
       await peripheral.peripheral(cbPeripheral, didModifyServices: invalidatedServices)
@@ -233,27 +248,36 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didDiscoverIncludedServicesFor service: CBMService, error: Error?
+    _ cbPeripheral: CBMPeripheral,
+    didDiscoverIncludedServicesFor service: CBMService,
+    error: Error?
   ) {
     Task {
       await peripheral.peripheral(
-        cbPeripheral, didDiscoverIncludedServicesFor: service, error: error
+        cbPeripheral,
+        didDiscoverIncludedServicesFor: service,
+        error: error
       )
     }
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didDiscoverCharacteristicsFor service: CBMService, error: Error?
+    _ cbPeripheral: CBMPeripheral,
+    didDiscoverCharacteristicsFor service: CBMService,
+    error: Error?
   ) {
     Task {
       await peripheral.peripheral(
-        cbPeripheral, didDiscoverCharacteristicsFor: service, error: error
+        cbPeripheral,
+        didDiscoverCharacteristicsFor: service,
+        error: error
       )
     }
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didUpdateValueFor characteristic: CBMCharacteristic,
+    _ cbPeripheral: CBMPeripheral,
+    didUpdateValueFor characteristic: CBMCharacteristic,
     error: Error?
   ) {
     Task {
@@ -262,7 +286,9 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didWriteValueFor characteristic: CBMCharacteristic, error: Error?
+    _ cbPeripheral: CBMPeripheral,
+    didWriteValueFor characteristic: CBMCharacteristic,
+    error: Error?
   ) {
     Task {
       await peripheral.peripheral(cbPeripheral, didWriteValueFor: characteristic, error: error)
@@ -270,29 +296,37 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didUpdateNotificationStateFor characteristic: CBMCharacteristic,
+    _ cbPeripheral: CBMPeripheral,
+    didUpdateNotificationStateFor characteristic: CBMCharacteristic,
     error: Error?
   ) {
     Task {
       await peripheral.peripheral(
-        cbPeripheral, didUpdateNotificationStateFor: characteristic, error: error
+        cbPeripheral,
+        didUpdateNotificationStateFor: characteristic,
+        error: error
       )
     }
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didDiscoverDescriptorsFor characteristic: CBMCharacteristic,
+    _ cbPeripheral: CBMPeripheral,
+    didDiscoverDescriptorsFor characteristic: CBMCharacteristic,
     error: Error?
   ) {
     Task {
       await peripheral.peripheral(
-        cbPeripheral, didDiscoverDescriptorsFor: characteristic, error: error
+        cbPeripheral,
+        didDiscoverDescriptorsFor: characteristic,
+        error: error
       )
     }
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didUpdateValueFor descriptor: CBMDescriptor, error: Error?
+    _ cbPeripheral: CBMPeripheral,
+    didUpdateValueFor descriptor: CBMDescriptor,
+    error: Error?
   ) {
     Task {
       await peripheral.peripheral(cbPeripheral, didUpdateValueFor: descriptor, error: error)
@@ -300,7 +334,9 @@ class PeripheralDelegate: NSObject, CBMPeripheralDelegate, @unchecked Sendable {
   }
 
   func peripheral(
-    _ cbPeripheral: CBMPeripheral, didWriteValueFor descriptor: CBMDescriptor, error: Error?
+    _ cbPeripheral: CBMPeripheral,
+    didWriteValueFor descriptor: CBMDescriptor,
+    error: Error?
   ) {
     Task {
       await peripheral.peripheral(cbPeripheral, didWriteValueFor: descriptor, error: error)

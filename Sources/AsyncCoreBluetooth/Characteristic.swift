@@ -12,14 +12,15 @@ import CoreBluetoothMock
 /// - error: the real-time status
 /// And they are seperated from each other. And have to be handled seperately.
 ///
+///
 public actor Characteristic: Identifiable {
 
   @MainActor
   public let uuid: CBMUUID
   @MainActor
-  private let _value: AsyncObservable<Data?> = .init(nil)
+  private let _value: AsyncObservableUnwrapped<Data> = .init(nil)
   @MainActor
-  public var value: any AsyncObservableReadOnly<Data?> { _value }
+  public var value: any AsyncObservableUnwrappedStreamReadOnly<Data> { _value }
   @MainActor
   private let _error: AsyncObservable<Error?> = .init(nil)
   @MainActor
