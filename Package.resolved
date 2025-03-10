@@ -1,6 +1,15 @@
 {
-  "originHash" : "a4665126d125db22139b2f7c4dec02b73f29b8ac853aa0284ba1e21265beb900",
+  "originHash" : "bb80178770e1a0d82e64038701f7868377f96d2f39c0b4ff2f8440f0b8b0b2d9",
   "pins" : [
+    {
+      "identity" : "asyncobservable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/meech-ward/AsyncObservable.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "0c7bdec1fb0c5341de7e463385683cb0b655f885"
+      }
+    },
     {
       "identity" : "ios-corebluetooth-mock",
       "kind" : "remoteSourceControl",
