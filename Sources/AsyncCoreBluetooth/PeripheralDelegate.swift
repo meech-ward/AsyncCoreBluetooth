@@ -153,7 +153,7 @@ extension Peripheral {
 
     let continuation = readCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
     let service = await services.current?.first(where: { $0.uuid == cbCharacteristic.service?.uuid })
-    let characteristic = await service?.characteristics?.first(where: {
+    let characteristic = await service?.characteristics.current?.first(where: {
       $0.uuid == cbCharacteristic.uuid
     })
 
@@ -189,7 +189,7 @@ extension Peripheral {
     let continuation = notifyCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
     guard
       let service = await services.current?.first(where: { $0.uuid == cbCharacteristic.service?.uuid }),
-      let characteristic = await service.characteristics?.first(where: {
+      let characteristic = await service.characteristics.current?.first(where: {
         $0.uuid == cbCharacteristic.uuid
       })
     else {

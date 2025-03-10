@@ -55,14 +55,12 @@ import Testing
     let characteristics = try await peripheral.discoverCharacteristics(
       [MockPeripheral.UUIDs.Device.characteristic], for: service)
     guard let characteristic = characteristics[MockPeripheral.UUIDs.Device.characteristic],
-      let serviceCharacteristic = await service.characteristics?.first,
-      let peripheralStateCharacteristic = await service.state.characteristics?.first
+      let serviceCharacteristic = await service.characteristics.current?.first
     else {
       Issue.record("couldn't get all characteristics")
       return
     }
     #expect(characteristic === serviceCharacteristic)
-    #expect(characteristic === peripheralStateCharacteristic)
   }
 
   @Test("Discover characteristics references the service")
