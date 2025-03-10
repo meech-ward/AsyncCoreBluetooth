@@ -35,11 +35,8 @@ public enum CentralManagerError: Error {
 }
 
 public enum PeripheralConnectionError: String, Error {
-  case alreadyConnecting
-  case alreadyConnected
-  case alreadyDisconnecting
-  case alreadyDisconnected
   case failedToConnect
+  // disconnected while continuations were working on things, like reading, writing, notifying, discovering services and characteristics
   case disconnectedWhileWorking
 }
 

@@ -45,14 +45,12 @@ import Testing
 
     let services = try await peripheral.discoverServices([MockPeripheral.UUIDs.Device.service])
     guard let service = services[MockPeripheral.UUIDs.Device.service],
-      let peripheralService = await peripheral.services?.first,
-      let peripheralStateService = await peripheral.state.services?.first
+      let peripheralService = await peripheral.services.current?.first
     else {
       Issue.record("couldn't get all servies")
       return
     }
     #expect(service === peripheralService)
-    #expect(service === peripheralStateService)
   }
 
   @Test("Discover services references the peripheral")

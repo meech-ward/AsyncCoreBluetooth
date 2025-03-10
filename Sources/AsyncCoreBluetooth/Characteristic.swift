@@ -20,15 +20,15 @@ public actor Characteristic: Identifiable {
   @MainActor
   private let _value: AsyncObservableUnwrapped<Data> = .init(nil)
   @MainActor
-  public var value: any AsyncObservableUnwrappedStreamReadOnly<Data> { _value }
+  public var value: some AsyncObservableUnwrappedStreamReadOnly<Data> { _value }
   @MainActor
   private let _error: AsyncObservable<Error?> = .init(nil)
   @MainActor
-  public var error: any AsyncObservableReadOnly<Error?> { _error }
+  public var error: some AsyncObservableReadOnly<Error?> { _error }
   @MainActor
   private let _isNotifying: AsyncObservable<Bool> = .init(false)
   @MainActor
-  public var isNotifying: any AsyncObservableReadOnly<Bool> { _isNotifying }
+  public var isNotifying: some AsyncObservableReadOnly<Bool> { _isNotifying }
 
   public internal(set) weak var service: Service?
 

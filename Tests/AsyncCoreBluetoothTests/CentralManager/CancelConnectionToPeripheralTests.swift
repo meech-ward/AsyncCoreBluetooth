@@ -72,7 +72,7 @@ import Testing
       assertConnectionStateIsConnectionDisconnected(connectionState, error: disconnectError)
 
       // Published connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       assertConnectionStateIsConnectionDisconnected(deviceConnectionState, error: disconnectError)
       break
     }
@@ -108,7 +108,7 @@ import Testing
       #expect(connectionState == .disconnecting)
 
       // Published connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(deviceConnectionState == .disconnecting)
       break
     }
@@ -117,7 +117,7 @@ import Testing
       #expect(connectionState == .disconnected(nil))
 
       // Published connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(deviceConnectionState == .disconnected(nil))
       break
     }
@@ -151,7 +151,7 @@ import Testing
       #expect(connectionState == .disconnecting)
 
       // Published connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(deviceConnectionState == .disconnecting)
       break
     }
@@ -160,7 +160,7 @@ import Testing
       #expect(connectionState == .disconnected(nil))
 
       // Published connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(deviceConnectionState == .disconnected(nil))
       break
     }

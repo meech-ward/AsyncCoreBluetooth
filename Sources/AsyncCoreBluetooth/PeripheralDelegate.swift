@@ -98,11 +98,11 @@ extension Peripheral {
       continuation?.resume(throwing: ServiceError.unableToFindServices)
       return
     }
-    var services = self.services ?? [Service]()
+    var services = await self.services.current ?? [Service]()
     var servicesMap: [CBUUID: Service] = [:]
     for cbService in cbServices {
       // this is new needs to be tested
-      if let service = self.services?.first(where: { $0.uuid == cbService.uuid }) {
+      if let service = services.first(where: { $0.uuid == cbService.uuid }) {
         servicesMap[cbService.uuid] = service
         continue
       }
@@ -112,7 +112,7 @@ extension Peripheral {
       servicesMap[cbService.uuid] = service
     }
 
-    self.services = services
+    self._services.update(services)
     continuation?.resume(with: Result.success(servicesMap))
   }
 
@@ -129,7 +129,7 @@ extension Peripheral {
       return
     }
 
-    guard let service = services?.first(where: { $0.uuid == cbmService.uuid }) else {
+    guard let service = await services.current?.first(where: { $0.uuid == cbmService.uuid }) else {
       print("found characteristics for unknown service \(cbmService.uuid)")
       continuation?.resume(throwing: CharacteristicError.unableToFindCharacteristicService)
       return
@@ -152,7 +152,7 @@ extension Peripheral {
     delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: cbError)
 
     let continuation = readCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
-    let service = services?.first(where: { $0.uuid == cbCharacteristic.service?.uuid })
+    let service = await services.current?.first(where: { $0.uuid == cbCharacteristic.service?.uuid })
     let characteristic = await service?.characteristics?.first(where: {
       $0.uuid == cbCharacteristic.uuid
     })
@@ -188,7 +188,7 @@ extension Peripheral {
     delegate?.peripheral(cbPeripheral, didUpdateValueFor: cbCharacteristic, error: error)
     let continuation = notifyCharacteristicValueContinuations[cbCharacteristic.uuid]?.popFirst()
     guard
-      let service = services?.first(where: { $0.uuid == cbCharacteristic.service?.uuid }),
+      let service = await services.current?.first(where: { $0.uuid == cbCharacteristic.service?.uuid }),
       let characteristic = await service.characteristics?.first(where: {
         $0.uuid == cbCharacteristic.uuid
       })

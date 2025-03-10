@@ -38,33 +38,6 @@ import Foundation
 /// }
 /// ```
 ///
-
-// @Observable
-// public class CentralManagerState {
-//  public var bleState: CentralManagerBLEState = .unknown
-//
-//  // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667498
-//
-//  /// A flag to determine whether the central manager is currently scanning for peripherals.
-//  ///
-//  /// This is a published property, so you can use this in SwiftUI to inform the user of the current scanning state.
-//  ///
-//  /// Example Usage:
-//  /// ```swift
-//  /// let centralManager = CentralManager()
-//  /// var body: some View {
-//  ///  VStack {
-//  ///   if centralManager.state.isScanning {
-//  ///      Text("Scanning")
-//  ///    } else {
-//  ///      Text("Not Scanning")
-//  ///    }
-//  ///  }
-//  /// }
-//  /// ```
-//  public var isScanning = false
-// }
-
 public actor CentralManager {
   // A flag to force mocking also on physical device. Useful for testing.
   private let forceMock: Bool
@@ -92,10 +65,31 @@ public actor CentralManager {
     forceMock: forceMock
   )
 
+  /// The current Bluetooth state as an observable property.
+  ///
+  /// This property can be observed using AsyncSequence to monitor changes to the Bluetooth state.
+  /// ```swift
+  /// Task {
+  ///   for await state in centralManager.bleState {
+  ///     print("BLE state changed to: \(state)")
+  ///   }
+  /// }
+  /// ```
   @MainActor
   let _bleState: AsyncObservable<CBMManagerState> = .init(.unknown)
   @MainActor
   public var bleState: some AsyncObservableReadOnly<CBMManagerState> { _bleState }
+
+  /// Indicates whether the central manager is currently scanning for peripherals.
+  ///
+  /// This property can be observed using AsyncSequence to monitor changes to the scanning state.
+  /// ```swift
+  /// Task {
+  ///   for await isScanning in centralManager.isScanning {
+  ///     print("Scanning state changed to: \(isScanning)")
+  ///   }
+  /// }
+  /// ```
   @MainActor
   let _isScanning: AsyncObservable<Bool> = .init(false)
   @MainActor
@@ -122,34 +116,6 @@ public actor CentralManager {
 
   // MARK: - ble states (CentralManagerState)
 
-  /// The device's current ``CentralManagerState``.
-  ///
-  /// This is a published property that you can use with SwiftUI to inform the user of the current state of BLE.
-  ///
-  /// Example Usage:
-  /// ```swift
-  ///  var centralManager = CentralManager()
-  ///  var body: some View {
-  ///    VStack {
-  ///      switch centralManager.bleState {
-  ///      case .unknown:
-  ///        Text("Unkown")
-  ///      case .resetting:
-  ///        Text("Resetting")
-  ///      case .unsupported:
-  ///        Text("Your device does not support Bluetooth")
-  ///      case .unauthorized:
-  ///        Text("Go into settings and authorize this app to use Bluetooth")
-  ///      case .poweredOff:
-  ///        Text("Turn your device's Bluetooth on")
-  ///      case .poweredOn:
-  ///        Text("Ready to go")
-  ///      }
-  ///    }
-  ///  }
-  /// ```
-  //  @MainActor public internal(set) var state = CentralManagerState()
-
   /// Starts the central manager and starts monitoring the `CentralManagerState` changes.
   ///
   /// This method is safe to call multiple times.
@@ -158,6 +124,14 @@ public actor CentralManager {
   /// You can also monitor the state changes using an async stream by calling the other `start() -> AsyncStream<CentralManagerState>` method
   ///
   /// Example usage:
+  /// ```swift
+  /// for await state in await centralManager.start() {
+  ///   print("BLE state changed to: \(state)")
+  /// }
+  /// ```
+  ///
+  /// or
+  ///
   /// ```swift
   /// Task {
   ///   for await state in centralManager.bleState {
@@ -183,6 +157,16 @@ public actor CentralManager {
     self.scanForPeripheralsContinuation = scanForPeripheralsContinuation
   }
 
+  /// A collection of peripherals that have been discovered during scanning.
+  ///
+  /// This property can be observed using AsyncSequence to monitor newly discovered peripherals.
+  /// ```swift
+  /// Task {
+  ///   for await peripherals in centralManager.peripheralsScanned {
+  ///     print("Updated peripherals list: \(peripherals.map { $0.name ?? "Unknown" })")
+  ///   }
+  /// }
+  /// ```
   @MainActor
   let _peripheralsScanned: AsyncObservable<[Peripheral]> = .init([])
   @MainActor
@@ -204,7 +188,7 @@ public actor CentralManager {
 
   private var servicesToScanFor: [CBUUID]?
 
-  /// Scans for peripherals that are advertising services and returns an AsyncStream of discovered peripherals.
+  /// Starts scanning for peripherals that are advertising services and returns an AsyncStream of discovered peripherals.
   ///
   /// This method uses Swift concurrency to handle the scan lifecycle. The scan will automatically stop when:
   /// - The task is canceled
@@ -216,16 +200,22 @@ public actor CentralManager {
   ///
   /// Example Usage:
   /// ```swift
-  /// for await device in try await centralManager.scanForPeripheralsStream(withServices: [...]) {
-  ///   print("Found device: \(device)")
-  ///   // maybe add the device to a published set of devices you can present to the user
-  ///   // break out of the loop or cancel the parent task when you're done scanning
+  /// do {
+  ///   for await device in try await centralManager.scanForPeripheralsStream(withServices: [...]) {
+  ///     print("Found device: \(device)")
+  ///     // maybe add the device to a published set of devices you can present to the user
+  ///     // break out of the loop or cancel the parent task when you're done scanning
+  ///   }
+  ///   // Scan automatically stops when the loop exits or task is canceled
+  /// } catch {
+  ///   print("Error scanning: \(error)")
   /// }
-  /// // Scan automatically stops when the loop exits or task is canceled
   /// ```
   ///
-  /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518986-scanforperipherals
-  ///
+  /// - Parameters:
+  ///   - services: An array of service UUIDs to scan for, or nil to scan for all services.
+  ///   - options: An optional dictionary specifying options for the scan.
+  /// - Returns: An AsyncStream providing discovered peripherals as they are found.
   /// - Throws:
   ///   - `CentralManagerError.notPoweredOn` if the central manager is **not** in the poweredOn state.
   ///   - `CentralManagerError.alreadyScanning` if the central manager is already scanning.
@@ -358,58 +348,63 @@ public actor CentralManager {
 
   // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#1667358
 
-  typealias PeripheralConnectionContinuation = (
-    peripheralUUID: UUID, continuation: AsyncStream<PeripheralConnectionState>.Continuation
-  )
-  var peripheralConnectionContinuations: [UUID: PeripheralConnectionContinuation] = [:]
-
-  func setPeripheralConnectionContinuation(
-    id: UUID,
-    continuation: PeripheralConnectionContinuation?
-  ) {
-    peripheralConnectionContinuations[id] = continuation
-  }
-
-  func getPeripheralConnectionContinuations(peripheralUUID: UUID)
-    -> [PeripheralConnectionContinuation]
-  {
-    return peripheralConnectionContinuations.values.filter { $0.peripheralUUID == peripheralUUID }
-  }
-
   func updatePeripheralConnectionState(peripheralUUID: UUID, state: PeripheralConnectionState) async {
-    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(
-      peripheralUUID: peripheralUUID
-    )
-    // await peripheralConnectionContinuations.first?.peripheral.setConnectionState(state)
     let peripheral = await Peripheral.getPeripheral(peripheralUUID: peripheralUUID)
     await peripheral?.setConnectionState(state)
-    for peripheralConnectionContinuation in peripheralConnectionContinuations {
-      peripheralConnectionContinuation.continuation.yield(state)
-    }
   }
 
   /// Establishes a local connection to a peripheral.
-  /// Canceling the task will NOT disconnect the peripheral. You must call `cancelPeripheralConnection(_:)` to disconnect.
-  /// This allows you to keep "watching" for changed to device state even after a connection or disconnection.
   ///
-  /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518766-connect
-  @discardableResult public func connect(_ peripheral: Peripheral, options: [String: Any]? = nil) async -> AsyncStream<PeripheralConnectionState> {
+  /// This method attempts to connect to the specified peripheral and returns an AsyncStream that provides
+  /// updates about the connection state. The stream will continue to emit updates even after the peripheral
+  /// is connected, allowing you to monitor disconnection events.
+  ///
+  /// Important: Canceling the task will NOT disconnect the peripheral. You must call ``cancelPeripheralConnection(_:)`` 
+  /// to disconnect. This allows you to keep monitoring for changes to device state even after a connection or disconnection.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// let connectionStream = await centralManager.connect(peripheral)
+  /// for await connectionState in connectionStream {
+  ///   switch connectionState {
+  ///   case .connected:
+  ///     print("Connected to peripheral")
+  ///     // Discover services, characteristics, etc.
+  ///   case .disconnected(let error):
+  ///     if let error = error {
+  ///       print("Disconnected with error: \(error)")
+  ///     } else {
+  ///       print("Disconnected normally")
+  ///     }
+  ///     break
+  ///   case .connecting:
+  ///     print("Connecting...")
+  ///   case .disconnecting:
+  ///     print("Disconnecting...")
+  ///   case .failedToConnect(let error):
+  ///     print("Failed to connect: \(error)")
+  ///     break
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - peripheral: The peripheral to connect to.
+  ///   - options: An optional dictionary specifying connection options.
+  /// - Returns: An AsyncStream providing updates about the connection state.
+  @discardableResult public func connect(_ peripheral: Peripheral, options: [String: Any]? = nil) async -> StreamOf<PeripheralConnectionState> {
     // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
-    let currentConnectionState = await peripheral.connectionState
+    let currentConnectionState = await peripheral.connectionState.current
     guard currentConnectionState != .connected else {
-      return await connectionState(forPeripheral: peripheral)
+      return await peripheral.connectionState.stream
     }
     guard currentConnectionState != .connecting else {
-      return await connectionState(forPeripheral: peripheral)
+      return await peripheral.connectionState.stream
     }
 
     await peripheral.setConnectionState(.connecting)
-    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(
-      peripheralUUID: peripheral.identifier
-    )
-    peripheralConnectionContinuations.forEach { $0.continuation.yield(.connecting) }
 
-    let stream = await connectionState(forPeripheral: peripheral)
+    let stream = await peripheral.connectionState.stream
     let cbPeripheral = await peripheral.cbPeripheral
 
     centralManager.connect(cbPeripheral, options: options)
@@ -417,69 +412,50 @@ public actor CentralManager {
     return stream
   }
 
-  /// Get an async stream representing a peripheral's connection state.
-  /// This is the same stream that you can get from `connect(_:)` and `cancelPeripheralConnection(_:)`.
-  /// The connection state will be the same as peripheral.connectionState.
-  public func connectionState(forPeripheral peripheral: Peripheral) async -> AsyncStream<PeripheralConnectionState> {
-    let connectionState = await peripheral.connectionState
-    let stream = AsyncStream { [weak self] continuation in
-      guard let self = self else {
-        return
-      }
-
-      let id = UUID()
-      Task {
-        await self.setPeripheralConnectionContinuation(
-          id: id,
-          continuation: (peripheral.identifier, continuation)
-        )
-        // Do this twice after asynchronously adding it to the dictionary
-        // That way we can await dropping the first value to know when this is ready
-        await peripheral.setConnectionState(connectionState)
-        continuation.yield(connectionState)
-        continuation.yield(connectionState)
-      }
-
-      continuation.onTermination = { @Sendable [weak self] _ in
-        guard let self = self else {
-          return
-        }
-        Task {
-          await self.setPeripheralConnectionContinuation(id: id, continuation: nil)
-        }
-      }
-    }
-    for await _ in stream {
-      break
-    }
-    return stream
-  }
-
   /// Cancels an active or pending local connection to a peripheral.
   ///
-  /// See https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/1518952-cancelperipheralconnection
-  @discardableResult public func cancelPeripheralConnection(_ peripheral: Peripheral) async
-    -> AsyncStream<PeripheralConnectionState>
-  {
+  /// This method attempts to disconnect from the specified peripheral and returns an AsyncStream that provides
+  /// updates about the disconnection process. The stream will emit a `.disconnecting` state followed by a 
+  /// `.disconnected` state when the disconnection completes.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// let disconnectionStream = await centralManager.cancelPeripheralConnection(peripheral)
+  /// for await connectionState in disconnectionStream {
+  ///   switch connectionState {
+  ///   case .disconnected(let error):
+  ///     if let error = error {
+  ///       print("Disconnected with error: \(error)")
+  ///     } else {
+  ///       print("Disconnected successfully")
+  ///     }
+  ///     break
+  ///   case .disconnecting:
+  ///     print("Disconnecting...")
+  ///   default:
+  ///     print("Unexpected state: \(connectionState)")
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// - Parameter peripheral: The peripheral to disconnect from.
+  /// - Returns: An AsyncStream providing updates about the disconnection process.
+  @discardableResult public func cancelPeripheralConnection(_ peripheral: Peripheral) async -> StreamOf<PeripheralConnectionState> {
     // https://developer.apple.com/documentation/corebluetooth/cbcentralmanager/peripheral_connection_options
-    let currentConnectionState = await peripheral.connectionState
+    let currentConnectionState = await peripheral.connectionState.current
     if case .disconnected = currentConnectionState {
-      return await connectionState(forPeripheral: peripheral)
+      return await peripheral.connectionState.stream
     }
     if case .failedToConnect = currentConnectionState {
-      return await connectionState(forPeripheral: peripheral)
+      return await peripheral.connectionState.stream
     }
     guard currentConnectionState != .disconnecting else {
-      return await connectionState(forPeripheral: peripheral)
+      return await peripheral.connectionState.stream
     }
 
     await peripheral.setConnectionState(.disconnecting)
-    let peripheralConnectionContinuations = getPeripheralConnectionContinuations(
-      peripheralUUID: peripheral.identifier
-    )
-    peripheralConnectionContinuations.forEach { $0.continuation.yield(.disconnecting) }
 
-    let stream = await connectionState(forPeripheral: peripheral)
+    let stream = await peripheral.connectionState.stream
 
     let cbPeripheral = await peripheral.cbPeripheral
     centralManager.cancelPeripheralConnection(cbPeripheral)
@@ -493,7 +469,22 @@ public actor CentralManager {
 
   var retreivedPeripherals: [UUID: Peripheral] = [:]
 
-  /// Returns a list of known peripherals by their identifiers.
+  /// Returns a list of known peripherals that are currently connected to the system and match the specified services.
+  ///
+  /// This method searches the system for connected peripherals that are advertising the specified services.
+  /// It can be used to find peripherals that were connected by a different app or process.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// let heartRateServiceUUID = CBUUID(string: "180D")
+  /// let connectedHeartRateMonitors = await centralManager.retrieveConnectedPeripherals(withServices: [heartRateServiceUUID])
+  /// for monitor in connectedHeartRateMonitors {
+  ///   print("Found connected heart rate monitor: \(monitor.name ?? "Unknown")")
+  /// }
+  /// ```
+  ///
+  /// - Parameter services: An array of service UUIDs to search for.
+  /// - Returns: An array of peripherals that are connected to the system and match the specified services.
   public func retrieveConnectedPeripherals(withServices services: [CBUUID]) async -> [Peripheral] {
     let cbPeripherals = centralManager.retrieveConnectedPeripherals(withServices: services)
     var peripherals = [Peripheral]()
@@ -510,7 +501,23 @@ public actor CentralManager {
     return peripherals
   }
 
-  /// Returns a list
+  /// Returns a list of peripherals that CoreBluetooth has previously discovered.
+  ///
+  /// This method retrieves peripherals that were previously discovered by CoreBluetooth
+  /// and match the specified identifiers. The peripherals don't need to be currently connected.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// // Using UUIDs that were previously stored from discovered peripherals
+  /// let savedPeripheralIDs: [UUID] = loadSavedPeripheralIdentifiers()
+  /// let peripherals = await centralManager.retrievePeripherals(withIdentifiers: savedPeripheralIDs)
+  /// for peripheral in peripherals {
+  ///   print("Retrieved peripheral: \(peripheral.name ?? "Unknown")")
+  /// }
+  /// ```
+  ///
+  /// - Parameter identifiers: An array of UUIDs identifying the peripherals to retrieve.
+  /// - Returns: An array of peripherals matching the specified identifiers.
   public func retrievePeripherals(withIdentifiers identifiers: [UUID]) async -> [Peripheral] {
     let cbPeripherals = centralManager.retrievePeripherals(withIdentifiers: identifiers)
     var peripherals = [Peripheral]()
@@ -527,6 +534,23 @@ public actor CentralManager {
     }
     return peripherals
   }
+
+  /// Returns a single peripheral that CoreBluetooth has previously discovered with the specified identifier.
+  ///
+  /// This method is a convenience wrapper around `retrievePeripherals(withIdentifiers:)` for retrieving a single peripheral.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// if let peripheral = await centralManager.retrievePeripheral(withIdentifier: savedUUID) {
+  ///   print("Retrieved peripheral: \(peripheral.name ?? "Unknown")")
+  ///   await centralManager.connect(peripheral)
+  /// } else {
+  ///   print("Peripheral not found")
+  /// }
+  /// ```
+  ///
+  /// - Parameter identifier: A UUID identifying the peripheral to retrieve.
+  /// - Returns: The peripheral matching the specified identifier, or nil if not found.
   public func retrievePeripheral(withIdentifier identifier: UUID) async -> Peripheral? {
     let peripherals = await retrievePeripherals(withIdentifiers: [identifier])
     return peripherals.first
@@ -535,7 +559,20 @@ public actor CentralManager {
   // MARK: - Inspecting Feature Support
 
   /// Returns a boolean value representing the support for the provided features.
-  /// See:  https://developer.apple.com/documentation/corebluetooth/cbcentralmanager#3222461
+  ///
+  /// Use this method to check if specific Bluetooth features are supported on the current device.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// #if !os(macOS)
+  /// if CentralManager.supports(.extendedScanAndConnect) {
+  ///   print("This device supports extended scan and connect")
+  /// }
+  /// #endif
+  /// ```
+  ///
+  /// - Parameter features: The features to check for support.
+  /// - Returns: A boolean value indicating whether the specified features are supported.
   #if !os(macOS)
     public static func supports(_ features: CBMCentralManager.Feature) -> Bool {
       return CBMCentralManager.supports(features)

@@ -1,5 +1,6 @@
 import CoreBluetoothMock
 import Testing
+import AsyncObservable
 
 @testable import AsyncCoreBluetooth
 
@@ -48,7 +49,7 @@ import Testing
       return
     }
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+    for await connectionState in await device.connectionState.stream {
       // stream state
       #expect(
         connectionState == .disconnected(nil),
@@ -56,7 +57,7 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .disconnected(nil),
         "Expected deviceConnectionState to be disconnected, got \(deviceConnectionState)"
@@ -80,7 +81,7 @@ import Testing
     }
 
     var i = 0
-    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+    for await connectionState in await device.connectionState.stream {
       if i == 0 {
         await centralManager.connect(device)
         i += 1
@@ -93,7 +94,7 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .connecting,
         "Expected deviceConnectionState to be connecting, got \(deviceConnectionState)"
@@ -117,7 +118,7 @@ import Testing
     }
 
     // should start by being disconnected
-    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+    for await connectionState in await device.connectionState.stream {
       // stream state
       #expect(
         connectionState == .disconnected(nil),
@@ -125,7 +126,7 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .disconnected(nil),
         "Expected deviceConnectionState to be disconnected, got \(deviceConnectionState)"
@@ -135,7 +136,7 @@ import Testing
 
     await centralManager.connect(device)
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+    for await connectionState in await device.connectionState.stream {
       // stream state
       #expect(
         connectionState == .connecting,
@@ -143,7 +144,7 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .connecting,
         "Expected deviceConnectionState to be connecting, got \(deviceConnectionState)"
@@ -176,7 +177,7 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .connecting,
         "Expected deviceConnectionState to be connecting, got \(deviceConnectionState)"
@@ -199,7 +200,7 @@ import Testing
       return
     }
 
-    @Sendable func assertConnectionStates(stream: AsyncStream<PeripheralConnectionState>) async {
+    @Sendable func assertConnectionStates(stream: StreamOf<PeripheralConnectionState>) async {
       var i = 0
       for await connectionState in stream {
         let expectedState: PeripheralConnectionState = i == 0 ? .disconnected(nil) : .connecting
@@ -216,9 +217,9 @@ import Testing
       }
     }
 
-    let stream1 = await centralManager.connectionState(forPeripheral: device)
-    let stream2 = await centralManager.connectionState(forPeripheral: device)
-    let stream3 = await centralManager.connectionState(forPeripheral: device)
+    let stream1 = await device.connectionState.stream
+    let stream2 = await device.connectionState.stream
+    let stream3 = await device.connectionState.stream
     let connectionStates = await centralManager.connect(device)
 
     await withTaskGroup(of: Void.self) { taskGroup in
@@ -257,34 +258,34 @@ import Testing
     await centralManager.connect(device)
 
     // device connection state property
-    var deviceConnectionState = await device.connectionState
+    var deviceConnectionState = await device.connectionState.current
     #expect(
       deviceConnectionState == .connecting,
       "Expected deviceConnectionState to be connecting, got \(deviceConnectionState)"
     )
 
     // observable device connection state property
-    var deviceConnectionStateObservable = await device.state.connectionState
+    var deviceConnectionStateObservable = await device.connectionState.observable
     #expect(
       deviceConnectionStateObservable == .connecting,
       "Expected deviceConnectionState to be connecting, got \(deviceConnectionState)"
     )
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+    for await connectionState in await device.connectionState.stream {
       if connectionState == .connected {
         break
       }
     }
 
     // device connection state property
-    deviceConnectionState = await device.connectionState
+    deviceConnectionState = await device.connectionState.current
     #expect(
       deviceConnectionState == .connected,
       "Expected deviceConnectionState to be connected, got \(deviceConnectionState)"
     )
 
     // observable device connection state property
-    deviceConnectionStateObservable = await device.state.connectionState
+    deviceConnectionStateObservable = await device.connectionState.observable
     #expect(
       deviceConnectionStateObservable == .connected,
       "Expected deviceConnectionState to be connected, got \(deviceConnectionState)"
@@ -307,7 +308,7 @@ import Testing
     }
 
     var i = 0
-    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+    for await connectionState in await device.connectionState.stream {
       if i == 0 {
         await centralManager.connect(device)
         i += 1
@@ -324,14 +325,14 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .connected,
         "Expected deviceConnectionState to be connected, got \(deviceConnectionState)"
       )
 
       // observable device connection state property
-      let deviceConnectionStateObservable = await device.state.connectionState
+      let deviceConnectionStateObservable = await device.connectionState.observable
       #expect(
         deviceConnectionStateObservable == .connected,
         "Expected deviceConnectionState to be connected, got \(deviceConnectionState)"
@@ -356,7 +357,7 @@ import Testing
 
     await centralManager.connect(device)
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device)
+    for await connectionState in await device.connectionState.stream
       .dropFirst()
     {
       // stream state
@@ -366,7 +367,7 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .connected,
         "Expected deviceConnectionState to be connected, got \(deviceConnectionState)"
@@ -399,7 +400,7 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .connected,
         "Expected deviceConnectionState to be connected, got \(deviceConnectionState)"
@@ -423,7 +424,7 @@ import Testing
     }
 
     @Sendable func assertConnectionStates(
-      stream: AsyncDropFirstSequence<AsyncStream<PeripheralConnectionState>>
+      stream: AsyncDropFirstSequence<StreamOf<PeripheralConnectionState>>
     ) async {
       for await connectionState in stream {
         let expectedState: PeripheralConnectionState = .connected
@@ -435,9 +436,9 @@ import Testing
       }
     }
 
-    let stream1 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
-    let stream2 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
-    let stream3 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
+    let stream1 = await device.connectionState.stream.dropFirst(2)
+    let stream2 = await device.connectionState.stream.dropFirst(2)
+    let stream3 = await device.connectionState.stream.dropFirst(2)
     let connectionStates = await centralManager.connect(device).dropFirst()
 
     await withTaskGroup(of: Void.self) { taskGroup in
@@ -476,7 +477,7 @@ import Testing
     }
 
     var i = 0
-    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+    for await connectionState in await device.connectionState.stream {
       if i == 0 {
         await centralManager.connect(device)
         i += 1
@@ -490,7 +491,7 @@ import Testing
       assertConnectionStateIsConnectionFailed(connectionState)
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       assertConnectionStateIsConnectionFailed(deviceConnectionState)
       break
     }
@@ -512,14 +513,14 @@ import Testing
 
     await centralManager.connect(device)
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device)
+    for await connectionState in await device.connectionState.stream
       .dropFirst()
     {
       // stream state
       assertConnectionStateIsConnectionFailed(connectionState)
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       assertConnectionStateIsConnectionFailed(deviceConnectionState)
       break
     }
@@ -546,7 +547,7 @@ import Testing
       assertConnectionStateIsConnectionFailed(connectionState)
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       assertConnectionStateIsConnectionFailed(deviceConnectionState)
       break
     }
@@ -568,14 +569,14 @@ import Testing
 
     await centralManager.connect(device)
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device)
+    for await connectionState in await device.connectionState.stream
       .dropFirst()
     {
       // stream state
       assertConnectionStateIsConnectionFailed(connectionState)
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       assertConnectionStateIsConnectionFailed(deviceConnectionState)
       break
     }
@@ -584,7 +585,7 @@ import Testing
 
     await centralManager.connect(device)
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device)
+    for await connectionState in await device.connectionState.stream
       .dropFirst()
     {
       // stream state
@@ -594,7 +595,7 @@ import Testing
       )
 
       // device connection state property
-      let deviceConnectionState = await device.connectionState
+      let deviceConnectionState = await device.connectionState.current
       #expect(
         deviceConnectionState == .connected,
         "Expected deviceConnectionState to be connected, got \(deviceConnectionState)"
@@ -618,7 +619,7 @@ import Testing
     }
 
     func assertConnectionStates(
-      stream: AsyncDropFirstSequence<AsyncStream<PeripheralConnectionState>>
+      stream: AsyncDropFirstSequence<StreamOf<PeripheralConnectionState>>
     ) async -> PeripheralConnectionState? {
       for await connectionState in stream {
         return connectionState
@@ -626,9 +627,9 @@ import Testing
       return nil
     }
 
-    let stream1 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
-    let stream2 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
-    let stream3 = await centralManager.connectionState(forPeripheral: device).dropFirst(2)
+    let stream1 = await device.connectionState.stream.dropFirst(2)
+    let stream2 = await device.connectionState.stream.dropFirst(2)
+    let stream3 = await device.connectionState.stream.dropFirst(2)
     let connectionStates = await centralManager.connect(device).dropFirst()
 
     await withTaskGroup(of: PeripheralConnectionState?.self) { taskGroup in
@@ -665,7 +666,7 @@ import Testing
 
     await centralManager.connect(device)
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device) {
+    for await connectionState in await device.connectionState.stream {
       #expect(
         connectionState == .connecting,
         "Expected connectionState to be connecting, got \(connectionState)"
@@ -698,7 +699,7 @@ import Testing
 
     await centralManager.connect(device)
 
-    for await connectionState in await centralManager.connectionState(forPeripheral: device).dropFirst() {
+    for await connectionState in await device.connectionState.stream.dropFirst() {
       // stream state
       #expect(
         connectionState == .connected,

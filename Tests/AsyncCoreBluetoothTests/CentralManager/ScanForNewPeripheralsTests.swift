@@ -118,83 +118,84 @@ import Testing
     try await assertAllScanning(false, message: "after scanning is complete")
   }
 }
-@Suite(.serialized) struct ScanForNewPeripheralsWithoutDuplicatesTests {
-  var centralManager: CentralManager!
+// CBCentralManagerMock doesn't work for this one but it might be nice to have some sort of test for it
+// @Suite(.serialized) struct ScanForNewPeripheralsWithoutDuplicatesTests {
+//   var centralManager: CentralManager!
 
-  var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(
-    identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345678")!,
-    delegate: MockPeripheral.Delegate()
-  )
-  var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(
-    identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345679")!,
-    delegate: MockPeripheral.Delegate()
-  )
-  var mockPeripheral3: CBMPeripheralSpec = MockPeripheral.makeDevice(
-    identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345678")!,
-    delegate: MockPeripheral.Delegate()
-  )
+//   var mockPeripheral: CBMPeripheralSpec = MockPeripheral.makeDevice(
+//     identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345678")!,
+//     delegate: MockPeripheral.Delegate()
+//   )
+//   var mockPeripheral2: CBMPeripheralSpec = MockPeripheral.makeDevice(
+//     identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345679")!,
+//     delegate: MockPeripheral.Delegate()
+//   )
+//   var mockPeripheral3: CBMPeripheralSpec = MockPeripheral.makeDevice(
+//     identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345678")!,
+//     delegate: MockPeripheral.Delegate()
+//   )
 
-  var mockPeripheral4: CBMPeripheralSpec = MockPeripheral.makeDevice(
-    identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345678")!,
-    delegate: MockPeripheral.Delegate()
-  )
-  var mockPeripheral5: CBMPeripheralSpec = MockPeripheral.makeDevice(
-    identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345679")!,
-    delegate: MockPeripheral.Delegate()
-  )
-  init() async throws {
-    print("init")
-    CBMCentralManagerMock.simulateInitialState(.poweredOff)
-    CBMCentralManagerMock.simulatePeripherals([mockPeripheral, mockPeripheral2, mockPeripheral3, mockPeripheral4, mockPeripheral5, mockPeripheral, mockPeripheral2, mockPeripheral3, mockPeripheral4, mockPeripheral5])
-    CBMCentralManagerMock.simulateInitialState(.poweredOn)
+//   var mockPeripheral4: CBMPeripheralSpec = MockPeripheral.makeDevice(
+//     identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345678")!,
+//     delegate: MockPeripheral.Delegate()
+//   )
+//   var mockPeripheral5: CBMPeripheralSpec = MockPeripheral.makeDevice(
+//     identifier: UUID(uuidString: "12345678-1234-5678-1234-567812345679")!,
+//     delegate: MockPeripheral.Delegate()
+//   )
+//   init() async throws {
+//     print("init")
+//     CBMCentralManagerMock.simulateInitialState(.poweredOff)
+//     CBMCentralManagerMock.simulatePeripherals([mockPeripheral, mockPeripheral2, mockPeripheral3, mockPeripheral4, mockPeripheral5, mockPeripheral, mockPeripheral2, mockPeripheral3, mockPeripheral4, mockPeripheral5])
+//     CBMCentralManagerMock.simulateInitialState(.poweredOn)
 
-    centralManager = CentralManager(forceMock: true)
-    for await state in await centralManager.start() {
-      if state == .poweredOn {
-        break
-      }
-    }
-  }
+//     centralManager = CentralManager(forceMock: true)
+//     for await state in await centralManager.start() {
+//       if state == .poweredOn {
+//         break
+//       }
+//     }
+//   }
 
-  @Test("Scan detects the same peripheral only once")
-  func testScanDetectsPeripheralOnlyOnce() async throws {
-    // Create a counter to track how many times we see the peripheral
-    var deviceCount = 0
+//   @Test("Scan detects the same peripheral only once")
+//   func testScanDetectsPeripheralOnlyOnce() async throws {
+//     // Create a counter to track how many times we see the peripheral
+//     var deviceCount = 0
 
-    // Start the scan
-    let devices = try await centralManager.scanForPeripheralsStream(withServices: [
-      MockPeripheral.UUIDs.Device.service
-    ])
+//     // Start the scan
+//     let devices = try await centralManager.scanForPeripheralsStream(withServices: [
+//       MockPeripheral.UUIDs.Device.service
+//     ])
 
-    // Iterate through results with a timeout to avoid infinite waiting
-    var streamIds = Set<UUID>()
-    let task = Task {
-      for await device in devices {
-        print("device: \(await device.identifier)")
-        streamIds.insert(await device.identifier)
-        deviceCount += 1
-      }
-    }
+//     // Iterate through results with a timeout to avoid infinite waiting
+//     var streamIds = Set<UUID>()
+//     let task = Task {
+//       for await device in devices {
+//         print("device: \(await device.identifier)")
+//         streamIds.insert(await device.identifier)
+//         deviceCount += 1
+//       }
+//     }
 
-    // Give some time for the scan to complete and find all peripherals
-    try await Task.sleep(for: .milliseconds(1000))
-    task.cancel()
+//     // Give some time for the scan to complete and find all peripherals
+//     try await Task.sleep(for: .milliseconds(1000))
+//     task.cancel()
 
-    // Verify we only saw each unique peripheral once in the stream
-    #expect(deviceCount == 2, "The stream should only yield each unique peripheral once")
+//     // Verify we only saw each unique peripheral once in the stream
+//     #expect(deviceCount == 2, "The stream should only yield each unique peripheral once")
 
-    // Also verify the peripheralsScanned property contains the correct number of unique peripherals
-    let scannedDevices = await centralManager.peripheralsScanned.current
-    #expect(scannedDevices.count == 2, "The peripheralsScanned property should contain only unique peripherals")
+//     // Also verify the peripheralsScanned property contains the correct number of unique peripherals
+//     let scannedDevices = await centralManager.peripheralsScanned.current
+//     #expect(scannedDevices.count == 2, "The peripheralsScanned property should contain only unique peripherals")
 
-    var scannedIds = Set<UUID>()
-    for device in scannedDevices {
-      scannedIds.insert(await device.identifier)
-    }
+//     var scannedIds = Set<UUID>()
+//     for device in scannedDevices {
+//       scannedIds.insert(await device.identifier)
+//     }
 
-    // Check that the identifiers in peripheralsScanned match our expected peripherals
-    let expectedIds = Set([mockPeripheral.identifier, mockPeripheral2.identifier])
-    #expect(scannedIds == expectedIds, "The peripheralsScanned should contain the expected peripheral identifiers")
-    #expect(streamIds == expectedIds, "The stream should contain the expected peripheral identifiers")
-  }
-}
+//     // Check that the identifiers in peripheralsScanned match our expected peripherals
+//     let expectedIds = Set([mockPeripheral.identifier, mockPeripheral2.identifier])
+//     #expect(scannedIds == expectedIds, "The peripheralsScanned should contain the expected peripheral identifiers")
+//     #expect(streamIds == expectedIds, "The stream should contain the expected peripheral identifiers")
+//   }
+// }
