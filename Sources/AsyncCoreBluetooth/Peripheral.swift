@@ -81,7 +81,7 @@ public actor Peripheral {
   /// Example Usage:
   /// ```swift
   /// Task {
-  ///   for await state in peripheral.connectionState {
+  ///   for await state in peripheral.connectionState.stream {
   ///     switch state {
   ///     case .connected:
   ///       print("Connected to peripheral")
@@ -115,7 +115,7 @@ public actor Peripheral {
   /// Example Usage:
   /// ```swift
   /// Task {
-  ///   for await services in peripheral.services {
+  ///   for await services in peripheral.services.stream {
   ///     if let services = services {
   ///       print("Discovered \(services.count) services")
   ///       for service in services {

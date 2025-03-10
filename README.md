@@ -2,6 +2,10 @@
 
 ![Build and Test](https://github.com/meech-ward/AsyncCoreBluetooth/actions/workflows/build.yml/badge.svg)
 
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmeech-ward%2FAsyncCoreBluetooth%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/meech-ward/AsyncCoreBluetooth)
+
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmeech-ward%2FAsyncCoreBluetooth%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/meech-ward/AsyncCoreBluetooth)
+
 This library is a Swift 6 wrapper around [CoreBluetooth](https://developer.apple.com/documentation/corebluetooth) and [CoreBluetoothMock](https://github.com/NordicSemiconductor/IOS-CoreBluetooth-Mock) that allows you to write your core bluetooth code using swift concurrency. It also plays nice with SwiftUI.
 
 The main classes are:
@@ -59,11 +63,35 @@ targets: [
 
 ## Examples
 
-Check the example iOS app for a full example https://github.com/meech-ward/AsyncCoreBluetoothExample
-
-Check example-no-ui.md for a connection example.
+Documentation is a little lacking right now. Check the Examples in the examples folder for more complete examples.
 
 Here are some snippets:
+
+## AsyncObservable
+
+This library uses the [AsyncObservable](https://github.com/meech-ward/AsyncObservable) library to provide observable properties. 
+
+This means that properties that might change over time can easily be observed. For example:
+
+```swift
+// the current connection state of the peripheral (.connected, .disconnected, .connecting, .disconnecting, .failedToConnect)
+peripheral.connectionState.current 
+
+// the connection state observed over time as an AsyncStream
+for await state in peripheral.connectionState.stream { 
+  //...
+}
+
+// the connection state observed over time as an @Observable
+// so you can use it in SwiftUI
+switch peripheral.connectionState.observable {
+  case .disconnected:
+    Text("disconnected")
+  //...
+}
+```
+
+So you'll see `.current`, `.stream`, and `.observable` a lot.
 
 ## Initializing The Central Manager
 
@@ -74,8 +102,7 @@ import AsyncCoreBluetooth
 
 let centralManager = CentralManager()
 
-// centralManager.start() if you don't need to listen for changes to the ble state
-for await bleState in await centralManager.startStream() {
+for await bleState in await centralManager.start() {
   switch bleState {
     case .unknown:
       print("Unkown")
@@ -93,7 +120,16 @@ for await bleState in await centralManager.startStream() {
 }
 ```
 
-`CentralManager` also provides `@Observable` properties through it's state property, for the ble state to make it easy to use with SwiftUI:
+The current state stream is always available as an `AsyncObservable` through `.bleState`
+
+```swift
+// async stream
+for await bleState in await centralManager.bleState.stream {
+  //...
+}
+```
+
+Or `.observable` to make it easy to use with SwiftUI:
 
 ```swift
 import AsyncCoreBluetooth
@@ -103,7 +139,7 @@ struct ContentView: View {
   var body: some View {
     NavigationStack {
       VStack {
-        switch centralManager.state.bleState {
+        switch centralManager.bleState.observable {
         case .unknown:
           Text("Unkown")
         case .resetting:
@@ -159,16 +195,12 @@ do {
 SwiftUI:
 
 ```swift
-import AsyncCoreBluetooth
-
 struct ScanningPeripherals: View {
-  let heartRateServiceUUID = UUID(string: "180D")
-  var centralManager: CentralManager
-  @MainActor @State private var peripherals: Set<Peripheral> = []
+  @State private var peripherals: [Peripheral] = []
 
   var body: some View {
     VStack {
-      List(Array(peripherals), id: \.identifier) { peripheral in
+      List(peripherals, id: \.identifier) { peripheral in
         Section {
           ScannedPeripheralRow(centralManager: centralManager, peripheral: peripheral)
         }
@@ -176,14 +208,46 @@ struct ScanningPeripherals: View {
     }
     .task {
       do {
-        for await peripheral in try await centralManager.scanForPeripherals(withServices: [heartRateServiceUUID]) {
-          peripherals.insert(peripheral)
+        // the scan wil stop when this loop is terminated or the task is cancelled
+        // so when this view is dismissed the scan will stop
+        for await peripheral in try await centralManager.scanForPeripheralsStream(withServices: [heartRateServiceUUID]) {
+          peripherals.append(peripheral)
           // break out of the loop or terminate the continuation to stop the scan
         }
+      } catch { 
+        // This only happens when ble state is not powered on or you're already scanning
+        print("error scanning for peripherals \(error)")
+      }
+    }
+  }
+}
+```
+
+Or use the `centralManager.peripheralsScanned` `AsyncObservable` to observe the peripherals that have been scanned:
+
+```swift
+struct ScanningPeripherals: View {
+
+  var body: some View {
+    VStack {
+      List(centralManager.peripheralsScanned.observable, id: \.identifier) { peripheral in
+        Section {
+          ScannedPeripheralRow(centralManager: centralManager, peripheral: peripheral)
+        }
+      }
+    }
+    .task {
+      do {
+        // you need to manually stop the scan when you're done
+        try await centralManager.scanForPeripherals(withServices: [heartRateServiceUUID]) {
       } catch {
         // This only happens when ble state is not powered on or you're already scanning
         print("error scanning for peripherals \(error)")
       }
+    }
+    .onDisappear {
+      // you need to manually stop the scan when you're done
+      Task { await centralManager.stopScan() }
     }
   }
 }
@@ -215,18 +279,11 @@ enum ConnectionState {
 - After `disconnecting`, the device will change to `disconnected(nil)`
 - If the device disconnects unexpectedly, the device will change straight from connected to `disconnected(error)`
 
-There's also the following method so you can grab an `AsyncStream<Peripheral.ConnectionState>` for a peripheral at any time:
-
-```swift
-func connectionState(forPeripheral peripheral: Peripheral) async -> AsyncStream<Peripheral.ConnectionState>
-```
-
-On top of that, `peripheral.state.connectionState` is `@Observable` for the connection state to make it easy to use with SwiftUI:
 
 ```swift
 let centralManager = CentralManager()
 
-await centralManager.startStream().first(where: { $0 == .poweredOn })
+await centralManager.start().first(where: { $0 == .poweredOn })
 print("Powered On, ready to scan")
 
 let peripheral = try await centralManager.scanForPeripherals(withServices: nil).first()
@@ -242,7 +299,7 @@ for await connectionState in await centralManager.connect(peripheral) {
 // or
 
 await centralManager.connect(peripheral)
-for await connectionState in centralManager.connectionState(forPeripheral: peripheral) {
+for await connectionState in peripheral.connectionState.stream {
   print(connectionState)
 }
 ```
@@ -257,15 +314,45 @@ for await connectionState in await centralManager.cancelPeripheralConnection(per
 // or
 
 await centralManager.cancelPeripheralConnection(peripheral)
-for await connectionState in centralManager.connectionState(forPeripheral: peripheral) {
+for await connectionState in peripheral.connectionState.stream {
   print(connectionState)
 }
 ```
 
-you can requst a new async stream or break out of these streams as much as you like without interfering with the peripheral connection. Once you call connect, the connection will be managed as normal by core bluetooth. You can call `cancelPeripheralConnection` at any time to cancel the connection.
+you can requst a new async stream or break out of these streams as much as you like without interfering with the peripheral connection. Once you call connect, the connection will be managed as normal by core bluetooth. 
 
-- Do not call `connect` when you're already connected
-- Do not call `cancelPeripheralConnection` when you're not connected
+You can call `cancelPeripheralConnection` at any time to cancel the connection.
+
+## Read
+
+```swift
+let data = try await peripheral.readValue(for: characteristic)
+```
+
+The characteristic's value is also available on the characteristic's `AsyncObservable` `.value` property:
+
+```swift
+let data = characteristic.value.current // or .stream or .observable
+```
+
+But you **MUST** either read `peripheral.readValue` or `peripheral.setNotifyValue(true` for this value to have any data. Reading it will **NOT** trigger a read from the peripheral device.
+
+## Notifications
+
+```swift
+try await peripheral.setNotifyValue(true, for: characteristic)
+//...
+for await value in characteristic.value.stream { // or .current or .observable
+  //...
+}
+```
+
+## Write
+
+```swift
+try await peripheral.writeValueWithResponse(data, for: characteristic) 
+```
+
 
 ## Running Tests
 
