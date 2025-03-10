@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		2245FBB52D7D055000516564 /* AsyncObservable in Frameworks */ = {isa = PBXBuildFile; productRef = 2245FBB42D7D055000516564 /* AsyncObservable */; };
 		2245FBB72D7D055000516564 /* AsyncObservableUserDefaults in Frameworks */ = {isa = PBXBuildFile; productRef = 2245FBB62D7D055000516564 /* AsyncObservableUserDefaults */; };
+		2245FCBB2D7E603600516564 /* MightFail in Frameworks */ = {isa = PBXBuildFile; productRef = 2245FCBA2D7E603600516564 /* MightFail */; };
 		22C239212D7CC86600BF7624 /* AsyncCoreBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 22C239202D7CC86600BF7624 /* AsyncCoreBluetooth */; };
 /* End PBXBuildFile section */
 
@@ -31,6 +32,7 @@
 			files = (
 				2245FBB52D7D055000516564 /* AsyncObservable in Frameworks */,
 				2245FBB72D7D055000516564 /* AsyncObservableUserDefaults in Frameworks */,
+				2245FCBB2D7E603600516564 /* MightFail in Frameworks */,
 				22C239212D7CC86600BF7624 /* AsyncCoreBluetooth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -77,6 +79,7 @@
 				22C239202D7CC86600BF7624 /* AsyncCoreBluetooth */,
 				2245FBB42D7D055000516564 /* AsyncObservable */,
 				2245FBB62D7D055000516564 /* AsyncObservableUserDefaults */,
+				2245FCBA2D7E603600516564 /* MightFail */,
 			);
 			productName = AsyncCoreBluetoothExample;
 			productReference = 22C2390D2D7CC7D900BF7624 /* AsyncCoreBluetoothExample.app */;
@@ -109,6 +112,7 @@
 			packageReferences = (
 				22C2391F2D7CC86600BF7624 /* XCLocalSwiftPackageReference "../../AsyncCoreBluetooth" */,
 				2245FBB32D7D055000516564 /* XCLocalSwiftPackageReference "../../AsyncObservable" */,
+				2245FCB92D7E603600516564 /* XCRemoteSwiftPackageReference "swift-might-fail" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 22C2390E2D7CC7D900BF7624 /* Products */;
@@ -371,6 +375,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		2245FCB92D7E603600516564 /* XCRemoteSwiftPackageReference "swift-might-fail" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/might-fail/swift-might-fail.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		2245FBB42D7D055000516564 /* AsyncObservable */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -379,6 +394,11 @@
 		2245FBB62D7D055000516564 /* AsyncObservableUserDefaults */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AsyncObservableUserDefaults;
+		};
+		2245FCBA2D7E603600516564 /* MightFail */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2245FCB92D7E603600516564 /* XCRemoteSwiftPackageReference "swift-might-fail" */;
+			productName = MightFail;
 		};
 		22C239202D7CC86600BF7624 /* AsyncCoreBluetooth */ = {
 			isa = XCSwiftPackageProductDependency;

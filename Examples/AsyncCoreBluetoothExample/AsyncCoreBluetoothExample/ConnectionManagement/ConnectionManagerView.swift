@@ -34,22 +34,20 @@ struct ConnectionManagerView: View {
             }
             .padding(.horizontal)
           }
-        } else if connectionManager.state.observable != .ready {
+        } else {
           ConnectingToPeripheralView(connectionManager: connectionManager) {
             Task {
               await connectionManager.stop()
               UserDefaults.connectedDeviceId.update(nil)
             }
           }
-        } else {
-          DeviceView(connectionManager: connectionManager)
         }
       }
       .padding()
       .navigationDestination(isPresented: $showScanningPeripherals) {
         ScanPeripheralsView(centralManager: centralManager) { selectedDevice in
           showScanningPeripherals = false
-          let uuid = selectedDevice.state.identifier
+          let uuid = selectedDevice.identifier
           UserDefaults.connectedDeviceId.update(uuid.uuidString)
           Task {
             await connectionManager.manageConnection(peripheralUUID: uuid.uuidString)
@@ -58,4 +56,11 @@ struct ConnectionManagerView: View {
       }
     }
   }
+}
+
+#Preview {
+  MockPeripheral.setupFakePeripherals()
+
+  return ConnectionManagerView(centralManager: .init(forceMock: true), connectionManager: PeripheralConnectionManager(central: .init(forceMock: true)))
+    .task {}
 }

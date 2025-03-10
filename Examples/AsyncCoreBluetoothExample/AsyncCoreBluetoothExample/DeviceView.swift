@@ -7,35 +7,35 @@
 
 import AsyncCoreBluetooth
 import CoreBluetooth
+import MightFail
 import SwiftUI
 
 struct DeviceView: View {
-  let connectionManager: PeripheralConnectionManager
-  
   @State private var ledState: Bool = false
   @State private var heartRateNotificationsEnabled: Bool = false
+  @State private var showErrorAlert: Bool = false
+  @State private var errorMessage: String = ""
     
+  let connectionManager: PeripheralConnectionManager
+  let peripheral: Peripheral
+  let heartRateMeasurementCharacteristic: Characteristic
+  let ledControlCharacteristic: Characteristic
+  
   // MARK: - Computed Properties
 
-  private var heartRateMeasurementCharacteristic: Characteristic? { connectionManager.heartRateMeasurementCharacteristic.observable }
-  private var ledControlCharacteristic: Characteristic? { connectionManager.ledControlCharacteristic.observable }
-  private var peripheral: Peripheral? { connectionManager.peripheral.observable }
-    
   private var heartRate: Int? {
-    guard let characteristic = heartRateMeasurementCharacteristic,
-          let data = characteristic.value.observable
-    else {
+    guard let data = heartRateMeasurementCharacteristic.value.observable else {
       return nil
     }
     return parseHeartRate(from: data)
   }
     
   private var deviceName: String {
-    peripheral?.state.name ?? "Unknown Device"
+    peripheral.name.observable ?? "No Name"
   }
     
   private var deviceIdentifier: String {
-    peripheral?.state.identifier.uuidString ?? ""
+    peripheral.identifier.uuidString
   }
     
   // MARK: - View Body
@@ -53,6 +53,11 @@ struct DeviceView: View {
       }
       .padding()
       .navigationTitle("Connected Device")
+      .alert("Error", isPresented: $showErrorAlert) {
+        Button("OK") { showErrorAlert = false }
+      } message: {
+        Text(errorMessage)
+      }
     }
   }
     
@@ -190,41 +195,45 @@ struct DeviceView: View {
   // MARK: - BLE Actions
     
   private func toggleHeartRateNotifications(enabled: Bool) async {
-    do {
-      guard let peripheral, let heartRateMeasurementCharacteristic else {
-        throw BLEError.characteristicNotAvailable
-      }
-            
-      // The ESP32 implementation uses indications (BLE_GATT_CHR_F_INDICATE) for
-      // the heart rate characteristic instead of notifications (BLE_GATT_CHR_F_NOTIFY)
-      // However, AsyncCoreBluetooth uses the same API for both
-      _ = try await peripheral.setNotifyValue(enabled, for: heartRateMeasurementCharacteristic)
-      print("Successfully \(enabled ? "enabled" : "disabled") heart rate indications")
-    } catch {
-      print("Error toggling heart rate indications: \(error.localizedDescription)")
+    // The ESP32 implementation uses indications (BLE_GATT_CHR_F_INDICATE) for
+    // the heart rate characteristic instead of notifications (BLE_GATT_CHR_F_NOTIFY)
+    // However, AsyncCoreBluetooth uses the same API for both
+    let (error, _, success) = await mightFail { try await peripheral.setNotifyValue(enabled, for: heartRateMeasurementCharacteristic) }
+    guard success else {
+      let errorText = "Error toggling heart rate indications: \(error.localizedDescription)"
+      print(errorText)
+      
+      errorMessage = errorText
+      showErrorAlert = true
+      // Revert toggle state since operation failed
+      heartRateNotificationsEnabled = !enabled
+      
+      return
     }
+    print("Successfully \(enabled ? "enabled" : "disabled") heart rate indications")
   }
     
   private func toggleLED(on: Bool) async {
-    do {
-      guard let peripheral, let ledControlCharacteristic else {
-        throw BLEError.characteristicNotAvailable
-      }
+    print("Setting LED state to: \(on ? "ON" : "OFF")")
             
-      print("Setting LED state to: \(on ? "ON" : "OFF")")
+    // This matches the ESP32 implementation that expects a single byte
+    // with value 0 or 1 to control the LED state
+    let data = Data([on ? UInt8(1) : UInt8(0)])
             
-      // This matches the ESP32 implementation that expects a single byte
-      // with value 0 or 1 to control the LED state
-      let data = Data([on ? UInt8(1) : UInt8(0)])
-            
-      // Using writeValueWithResponse to ensure the command was received correctly
-      try await peripheral.writeValueWithResponse(data, for: ledControlCharacteristic)
-      print("Successfully set LED to \(on ? "ON" : "OFF")")
-            
-    } catch {
-      // the default esp code failes to return a valid rc so this might error here
-      print("Error toggling LED: \(error.localizedDescription)")
+    // Using writeValueWithResponse to ensure the command was received correctly
+    let (error, _, success) = await mightFail { try await peripheral.writeValueWithResponse(data, for: ledControlCharacteristic) }
+    guard success else {
+      let errorText = "Error toggling LED: \(error.localizedDescription)"
+      print(errorText)
+
+      errorMessage = errorText
+      showErrorAlert = true
+      // Revert toggle state since operation failed
+      ledState = !on
+      
+      return
     }
+    print("Successfully set LED to \(on ? "ON" : "OFF")")
   }
     
   // Parse heart rate from the characteristic data according to Bluetooth Heart Rate Service specification
@@ -254,32 +263,4 @@ struct DeviceView: View {
     print("Invalid heart rate data format")
     return nil
   }
-}
-
-// MARK: - Helper Types
-
-enum BLEError: LocalizedError {
-  case characteristicNotAvailable
-  case ledWriteError
-  case heartRateReadError
-    
-  var errorDescription: String? {
-    switch self {
-    case .characteristicNotAvailable:
-      return "Peripheral characteristic not available"
-    case .ledWriteError:
-      return "Failed to write to LED control characteristic"
-    case .heartRateReadError:
-      return "Failed to read heart rate characteristic"
-    }
-  }
-}
-
-// MARK: - Preview
-
-#Preview {
-  // Mock setup for preview
-  let centralManager = CentralManager(forceMock: true)
-  let connectionManager = PeripheralConnectionManager(central: centralManager)
-  return DeviceView(connectionManager: connectionManager)
 }

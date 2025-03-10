@@ -1,3 +1,12 @@
+//
+//  BLEIdentifiers.swift
+//  AsyncCoreBluetoothExample
+//
+//  Created by Sam Meech-Ward on 2025-03-09.
+//
+
+import CoreBluetooth
+
 enum BLEIdentifiers {
   static let name = "NimBLE_GATT"
   /// Service UUIDs

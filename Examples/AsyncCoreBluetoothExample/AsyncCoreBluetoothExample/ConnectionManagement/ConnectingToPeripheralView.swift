@@ -24,7 +24,7 @@ struct ConnectingToPeripheralView: View {
     
   @ViewBuilder
   private var connectionStateView: some View {
-    if case .error(let error) = connectionManager.state.observable {
+    if let error = connectionManager.error {
       statusView(
         icon: "exclamationmark.triangle",
         title: "Connection Error",
@@ -32,8 +32,8 @@ struct ConnectingToPeripheralView: View {
         color: .red
       )
     }
-    if let peripheral = connectionManager.peripheral.observable {
-      switch peripheral.state.connectionState {
+    if let peripheral = connectionManager.peripheral {
+      switch peripheral.connectionState.observable {
       case .disconnected(let cBError):
         statusView(
           icon: "wifi.slash",
@@ -99,7 +99,7 @@ struct ConnectingToPeripheralView: View {
   private var reconnectButton: some View {
     Button {
       Task {
-        if let peripheral = connectionManager.peripheral.observable {
+        if let peripheral = connectionManager.peripheral {
           await connectionManager.manageConnection(peripheralUUID: peripheral.identifier.uuidString)
         }
       }

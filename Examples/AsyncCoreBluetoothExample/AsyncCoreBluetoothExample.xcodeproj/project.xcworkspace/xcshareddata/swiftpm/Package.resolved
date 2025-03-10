@@ -1,5 +1,5 @@
 {
-  "originHash" : "ce7dd4b08f1fdc0011e858c1ec77e00bf3eedcfd03eaa8300454e826c163eca5",
+  "originHash" : "75a2a92793bb243fdc3660a6fa322ab2c432a5c98822acd357345422525fe02d",
   "pins" : [
     {
       "identity" : "ios-corebluetooth-mock",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
         "version" : "1.1.4"
+      }
+    },
+    {
+      "identity" : "swift-might-fail",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/might-fail/swift-might-fail.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "91422ebe2927aa08620f07d574ce815b58c6d14f"
       }
     }
   ],

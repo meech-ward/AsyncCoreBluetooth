@@ -24,7 +24,10 @@ struct ScanPeripheralsView: View {
   @State private var errorMessage: String?
   @Environment(\.dismiss) private var dismiss
   
-  @State private var peripherals: [Peripheral] = []
+  private var peripherals: [Peripheral] {
+    // this peripheral doesn't advertise its services
+    centralManager.peripheralsScanned.observable.filter { $0.name.current == BLEIdentifiers.name }
+  }
     
   var body: some View {
     VStack(spacing: 20) {
@@ -65,7 +68,7 @@ struct ScanPeripheralsView: View {
             
       // Peripherals list
       List {
-        ForEach(peripherals, id: \.state.identifier) { peripheral in
+        ForEach(peripherals, id: \.identifier) { peripheral in
           PeripheralRow(peripheral: peripheral)
             .contentShape(Rectangle())
             .onTapGesture {
@@ -84,16 +87,27 @@ struct ScanPeripheralsView: View {
       // the loop breaks automatically when this task is canceled which happens when the view is dismissed
 
       do {
+        // this needs to be stopped when we're done
+        print("scan")
+        try await centralManager.scanForPeripherals(withServices: nil)
+        // or we could use the following method which stops scanning when it breaks or when this task is canceled
+        // which will happen when the view dissapears
+        
+//        for await peripheral in try await centralManager.scanForPeripheralsStream(withServices: nil) {
         // this peripheral doesn't advertise its services
-        for await peripheral in try await centralManager.scanForPeripheralsStream(withServices: nil) {
-          if peripheral.state.name == BLEIdentifiers.name {
-            peripherals.append(peripheral)
-          }
-        }
+//          if peripheral.state.name == BLEIdentifiers.name {
+//            peripherals.append(peripheral)
+//          }
+//        }
       } catch {
         self.errorMessage = "Error scanning for peripherals: \(error.localizedDescription)"
       }
-      print("scanning done")
+    }
+    .onDisappear {
+      Task {
+        await centralManager.stopScan()
+        print("stop scan")
+      }
     }
   }
 }
@@ -105,10 +119,10 @@ struct PeripheralRow: View {
   var body: some View {
     HStack {
       VStack(alignment: .leading) {
-        Text(peripheral.state.name ?? "Unknown Device")
+        Text(peripheral.name.observable ?? "Unknown Device")
           .font(.headline)
                 
-        Text(peripheral.state.identifier.uuidString)
+        Text(peripheral.identifier.uuidString)
           .font(.caption)
           .foregroundColor(.secondary)
       }
@@ -124,5 +138,5 @@ struct PeripheralRow: View {
 }
 
 #Preview {
-  ScanPeripheralsView(centralManager: .init(forceMock: true), selectDevice: {_ in })
+  ScanPeripheralsView(centralManager: .init(forceMock: true), selectDevice: { _ in })
 }
