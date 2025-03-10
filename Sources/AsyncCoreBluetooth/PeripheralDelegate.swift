@@ -74,9 +74,6 @@ extension Peripheral {
   }
 
   func peripheral(_ cbPeripheral: CBMPeripheral, didOpen channel: CBML2CAPChannel?, error: Error?) {
-    print(
-      "peripheral \(cbPeripheral) didOpen \(String(describing: channel)) error \(String(describing: error))"
-    )
     delegate?.peripheral(cbPeripheral, didOpen: channel, error: error)
   }
 
@@ -87,7 +84,6 @@ extension Peripheral {
   // and then discover characteristics
   // will the characteristics be added to the correct service
   func peripheral(_ cbPeripheral: CBMPeripheral, didDiscoverServices error: Error?) async {
-    print("discovered service \(cbPeripheral.services) \(discoverServicesContinuations.count) \(self.identifier) \(ObjectIdentifier(self))")
     delegate?.peripheral(cbPeripheral, didDiscoverServices: error)
     let continuation = discoverServicesContinuations.popFirst()
     if let error {
@@ -193,7 +189,6 @@ extension Peripheral {
         $0.uuid == cbCharacteristic.uuid
       })
     else {
-      print("unable to find characteristic \(cbCharacteristic.uuid) for service \(cbCharacteristic.service?.uuid) \(cbPeripheral.services))")
       continuation?.resume(throwing: CharacteristicError.unableToFindCharacteristicService)
       return
     }
