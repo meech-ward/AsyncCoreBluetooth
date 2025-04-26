@@ -9,18 +9,33 @@
 /* Begin PBXBuildFile section */
 		2245FBB52D7D055000516564 /* AsyncObservable in Frameworks */ = {isa = PBXBuildFile; productRef = 2245FBB42D7D055000516564 /* AsyncObservable */; };
 		2245FBB72D7D055000516564 /* AsyncObservableUserDefaults in Frameworks */ = {isa = PBXBuildFile; productRef = 2245FBB62D7D055000516564 /* AsyncObservableUserDefaults */; };
-		2245FCBB2D7E603600516564 /* MightFail in Frameworks */ = {isa = PBXBuildFile; productRef = 2245FCBA2D7E603600516564 /* MightFail */; };
 		227860152D7E9E8000269B0F /* AsyncCoreBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 227860142D7E9E8000269B0F /* AsyncCoreBluetooth */; };
+		227861292D7EAAEC00269B0F /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 227861282D7EAAEC00269B0F /* README.md */; };
+		2278612C2D7EB2F100269B0F /* MightFail in Frameworks */ = {isa = PBXBuildFile; productRef = 2278612B2D7EB2F100269B0F /* MightFail */; };
 		22C239212D7CC86600BF7624 /* AsyncCoreBluetooth in Frameworks */ = {isa = PBXBuildFile; productRef = 22C239202D7CC86600BF7624 /* AsyncCoreBluetooth */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		227861282D7EAAEC00269B0F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		22C2390D2D7CC7D900BF7624 /* AsyncCoreBluetoothExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AsyncCoreBluetoothExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		227861262D7EA21D00269B0F /* Exceptions for "AsyncCoreBluetoothExample" folder in "AsyncCoreBluetoothExample" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 22C2390C2D7CC7D900BF7624 /* AsyncCoreBluetoothExample */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		22C2390F2D7CC7D900BF7624 /* AsyncCoreBluetoothExample */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				227861262D7EA21D00269B0F /* Exceptions for "AsyncCoreBluetoothExample" folder in "AsyncCoreBluetoothExample" target */,
+			);
 			path = AsyncCoreBluetoothExample;
 			sourceTree = "<group>";
 		};
@@ -34,8 +49,8 @@
 				227860152D7E9E8000269B0F /* AsyncCoreBluetooth in Frameworks */,
 				2245FBB52D7D055000516564 /* AsyncObservable in Frameworks */,
 				2245FBB72D7D055000516564 /* AsyncObservableUserDefaults in Frameworks */,
-				2245FCBB2D7E603600516564 /* MightFail in Frameworks */,
 				22C239212D7CC86600BF7624 /* AsyncCoreBluetooth in Frameworks */,
+				2278612C2D7EB2F100269B0F /* MightFail in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -47,6 +62,7 @@
 			children = (
 				22C2390F2D7CC7D900BF7624 /* AsyncCoreBluetoothExample */,
 				22C2390E2D7CC7D900BF7624 /* Products */,
+				227861282D7EAAEC00269B0F /* README.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -81,8 +97,8 @@
 				22C239202D7CC86600BF7624 /* AsyncCoreBluetooth */,
 				2245FBB42D7D055000516564 /* AsyncObservable */,
 				2245FBB62D7D055000516564 /* AsyncObservableUserDefaults */,
-				2245FCBA2D7E603600516564 /* MightFail */,
 				227860142D7E9E8000269B0F /* AsyncCoreBluetooth */,
+				2278612B2D7EB2F100269B0F /* MightFail */,
 			);
 			productName = AsyncCoreBluetoothExample;
 			productReference = 22C2390D2D7CC7D900BF7624 /* AsyncCoreBluetoothExample.app */;
@@ -113,8 +129,8 @@
 			mainGroup = 22C239042D7CC7D900BF7624;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				2245FCB92D7E603600516564 /* XCRemoteSwiftPackageReference "swift-might-fail" */,
 				227860132D7E9E8000269B0F /* XCRemoteSwiftPackageReference "AsyncCoreBluetooth" */,
+				2278612A2D7EB2F100269B0F /* XCLocalSwiftPackageReference "../../../MightFail" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 22C2390E2D7CC7D900BF7624 /* Products */;
@@ -131,6 +147,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				227861292D7EAAEC00269B0F /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,7 +291,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth";
+				INFOPLIST_FILE = AsyncCoreBluetoothExample/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -290,13 +307,14 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.meech-ward.AsyncCoreBluetoothExample";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.meech-ward.AsyncCoreBluetoothAccessory";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 				WATCHOS_DEPLOYMENT_TARGET = 11.0;
 				XROS_DEPLOYMENT_TARGET = 2.0;
 			};
@@ -315,7 +333,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth";
+				INFOPLIST_FILE = AsyncCoreBluetoothExample/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -331,13 +349,14 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.meech-ward.AsyncCoreBluetoothExample";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.meech-ward.AsyncCoreBluetoothAccessory";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 				WATCHOS_DEPLOYMENT_TARGET = 11.0;
 				XROS_DEPLOYMENT_TARGET = 2.0;
 			};
@@ -366,15 +385,14 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		2245FCB92D7E603600516564 /* XCRemoteSwiftPackageReference "swift-might-fail" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/might-fail/swift-might-fail.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		2278612A2D7EB2F100269B0F /* XCLocalSwiftPackageReference "../../../MightFail" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../../MightFail;
 		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		227860132D7E9E8000269B0F /* XCRemoteSwiftPackageReference "AsyncCoreBluetooth" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/meech-ward/AsyncCoreBluetooth.git";
@@ -394,15 +412,14 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = AsyncObservableUserDefaults;
 		};
-		2245FCBA2D7E603600516564 /* MightFail */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 2245FCB92D7E603600516564 /* XCRemoteSwiftPackageReference "swift-might-fail" */;
-			productName = MightFail;
-		};
 		227860142D7E9E8000269B0F /* AsyncCoreBluetooth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 227860132D7E9E8000269B0F /* XCRemoteSwiftPackageReference "AsyncCoreBluetooth" */;
 			productName = AsyncCoreBluetooth;
+		};
+		2278612B2D7EB2F100269B0F /* MightFail */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MightFail;
 		};
 		22C239202D7CC86600BF7624 /* AsyncCoreBluetooth */ = {
 			isa = XCSwiftPackageProductDependency;

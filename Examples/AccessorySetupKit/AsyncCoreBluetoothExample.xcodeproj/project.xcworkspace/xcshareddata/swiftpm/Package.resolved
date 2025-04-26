@@ -1,5 +1,5 @@
 {
-  "originHash" : "37fe79cf1487a1c80f6bf32dfb34b7f51a86f08563cd641131b670bd57091caf",
+  "originHash" : "a6bfa06ec839dc3fd3d212174d50967a82296d2611db511a903e7e3bf6edbeb5",
   "pins" : [
     {
       "identity" : "asynccorebluetooth",
@@ -35,15 +35,6 @@
       "state" : {
         "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
         "version" : "1.1.4"
-      }
-    },
-    {
-      "identity" : "swift-might-fail",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/might-fail/swift-might-fail.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "91422ebe2927aa08620f07d574ce815b58c6d14f"
       }
     }
   ],
