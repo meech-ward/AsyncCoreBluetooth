@@ -353,6 +353,29 @@ for await value in characteristic.value.stream { // or .current or .observable
 try await peripheral.writeValueWithResponse(data, for: characteristic) 
 ```
 
+## RSSI
+
+You can read the Received Signal Strength Indicator (RSSI) of a peripheral to determine its signal strength:
+
+```swift
+// Read RSSI once
+let rssiValue = try await peripheral.readRSSI()
+print("Signal strength: \(rssiValue) dBm") // Values typically range from -40 (near) to -100 dBm (far)
+
+// Or observe RSSI changes over time
+for await rssi in peripheral.rssi.stream {
+  print("RSSI updated: \(rssi) dBm") 
+  if rssi > -50 {
+    print("Device is very close")
+  } else if rssi > -70 {
+    print("Device is at medium range")
+  } else {
+    print("Device is far away")
+  }
+}
+
+// note that the rssi is only updated when you call readRSSI, so you would need to call this for the loop to itterate
+```
 
 ## Running Tests
 

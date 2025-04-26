@@ -138,6 +138,7 @@ public actor Peripheral {
   /// that is only available in the underlying `CBMPeripheral`.
   public private(set) var cbPeripheral: CBMPeripheral
 
+
   /// The unique identifier associated with the peripheral.
   ///
   /// This UUID uniquely identifies the peripheral and can be used to retrieve the peripheral later
@@ -153,12 +154,44 @@ public actor Peripheral {
   /// This will not affect the async streams.
   public var delegate: CBMPeripheralDelegate?
 
+  /// The received signal strength indicator (RSSI) of the peripheral.
+  ///
+  /// This property is an AsyncObservableUnwrapped that provides the signal strength
+  /// of the connection with the peripheral, measured in decibels (dBm).
+  /// The closer to 0, the stronger the signal (for example, -30 is a strong signal,
+  /// while -90 is a weak signal).
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// Task {
+  ///   for await value in peripheral.rssi {
+  ///     print("RSSI updated: \(value) dBm")
+  ///     // You could use this to estimate proximity to the device
+  ///     if value > -50 {
+  ///       print("Very close proximity")
+  ///     } else if value > -70 {
+  ///       print("Medium proximity")
+  ///     } else {
+  ///       print("Far proximity")
+  ///     }
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Note: The RSSI value updates when you call `readRSSI()` or when the system
+  /// periodically updates the value for connected peripherals.
+  @MainActor
+  let _rssi: AsyncObservableUnwrapped<Int> = .init(nil)
+  @MainActor
+  public var rssi: some AsyncObservableUnwrappedStreamReadOnly<Int> { _rssi }
+
   private var peripheralDelegate: PeripheralDelegate?
 
   var discoverServicesContinuations = Deque<CheckedContinuation<[CBUUID /* service uuid */: Service], Error>>()
   var discoverCharacteristicsContinuations: [CBUUID /* service uuid */: Deque<CheckedContinuation<[CBUUID /* characteristic uuid */: Characteristic], Error>>] = [:]
 
   var readCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Data, Error>>] = [:]
+  var readRSSIContinuations: Deque<CheckedContinuation<Int, Error>> = []
   var writeCharacteristicWithResponseContinuations: Deque<CheckedContinuation<Void, any Error>> = Deque<CheckedContinuation<Void, Error>>()
   var notifyCharacteristicValueContinuations: [CBUUID: Deque<CheckedContinuation<Bool, Error>>] = [:]
 
@@ -424,6 +457,41 @@ extension Peripheral {
       }
       readCharacteristicValueContinuations[characteristic.uuid]?.append(continuation)
       cbPeripheral.readValue(for: characteristic.characteristic)
+    }
+  }
+
+  /// Reads the current RSSI value for the peripheral.
+  ///
+  /// This method requests the current received signal strength indicator (RSSI) from the peripheral.
+  /// RSSI is measured in decibels (dBm) and provides an indication of connection signal strength.
+  /// The value is typically negative, with values closer to 0 indicating stronger signals.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// do {
+  ///   let rssiValue = try await peripheral.readRSSI()
+  ///   print("Current RSSI: \(rssiValue) dBm")
+  ///   
+  ///   // Use RSSI for approximate distance estimation
+  ///   if rssiValue > -50 {
+  ///     print("Device is nearby")
+  ///   } else if rssiValue > -70 {
+  ///     print("Device is at medium range")
+  ///   } else {
+  ///     print("Device is far away")
+  ///   }
+  /// } catch {
+  ///   print("Failed to read RSSI: \(error)")
+  /// }
+  /// ```
+  ///
+  /// - Returns: The current RSSI value in dBm (decibels relative to 1 milliwatt).
+  /// - Throws: An error if the RSSI read operation fails or if the peripheral disconnects during the read.
+  @discardableResult
+  public func readRSSI() async throws -> Int {
+    return try await withCheckedThrowingContinuation { continuation in
+      readRSSIContinuations.append(continuation)
+      cbPeripheral.readRSSI()
     }
   }
 

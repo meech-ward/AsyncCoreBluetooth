@@ -33,6 +33,8 @@ class MockPeripheral: @unchecked Sendable {
       return peripheralDidReceiveConnectionRequestResult
     }
 
+  
+ 
     // Read requests
     func peripheral(
       _ peripheral: CBMPeripheralSpec,
@@ -93,12 +95,12 @@ class MockPeripheral: @unchecked Sendable {
     }
   }
 
-  static func makeDevice(identifier: UUID = UUID(), delegate: CBMPeripheralSpecDelegate, isKnown: Bool = false)
+  static func makeDevice(identifier: UUID = UUID(), delegate: CBMPeripheralSpecDelegate, isKnown: Bool = false, proximity: CBMProximity = .near)
     -> CBMPeripheralSpec
   {
     var spec =
       CBMPeripheralSpec
-      .simulatePeripheral(identifier: identifier, proximity: .near)
+      .simulatePeripheral(identifier: identifier, proximity: proximity)
       .advertising(
         advertisementData: [
           CBMAdvertisementDataLocalNameKey: "my device",

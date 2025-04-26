@@ -25,6 +25,11 @@ extension Peripheral {
   func peripheral(_ cbPeripheral: CBMPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
     print("peripheral \(cbPeripheral) didReadRSSI \(RSSI) error \(String(describing: error))")
     delegate?.peripheral(cbPeripheral, didReadRSSI: RSSI, error: error)
+    self._rssi.update(RSSI.intValue)
+    guard let continuation = readRSSIContinuations.popFirst() else {
+      return
+    }
+    continuation.resume(with: Result.success(RSSI.intValue))
   }
 
   func peripheral(
