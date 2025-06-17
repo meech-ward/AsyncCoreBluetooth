@@ -377,6 +377,31 @@ for await rssi in peripheral.rssi.stream {
 // note that the rssi is only updated when you call readRSSI, so you would need to call this for the loop to itterate
 ```
 
+
+## Accessing Underlying CBMPeripheral
+
+Sometimes you need to access CoreBluetooth functionality that hasn't been wrapped by this library yet. The `withCBPeripheral` method provides safe access to the underlying `CBMPeripheral` instance:
+
+```swift
+// Get maximum write length for a peripheral
+let maxLength = await peripheral.withCBPeripheral { cbPeripheral in
+  cbPeripheral.maximumWriteValueLength(for: .withoutResponse)
+}
+
+// Or using shorthand closure syntax
+let maxLength = await peripheral.withCBPeripheral {
+  $0.maximumWriteValueLength(for: .withoutResponse)
+}
+
+// You can also assign to external variables
+var writeLength: Int!
+await peripheral.withCBPeripheral { cbPeripheral in
+  writeLength = cbPeripheral.maximumWriteValueLength(for: .withoutResponse)
+}
+```
+
+This is useful when you need CoreBluetooth features that aren't yet implemented in this library.
+
 ## Running Tests
 
 ```

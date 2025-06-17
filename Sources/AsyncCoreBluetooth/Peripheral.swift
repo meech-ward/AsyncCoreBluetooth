@@ -137,6 +137,43 @@ public actor Peripheral {
   /// Avoid using this if you can. It's been left public in case this library missed some functionality
   /// that is only available in the underlying `CBMPeripheral`.
   public private(set) var cbPeripheral: CBMPeripheral
+  
+  /// Provides safe access to the underlying CBMPeripheral instance through a closure.
+  ///
+  /// Avoid using this if you can. 
+  ///
+  /// This method allows you to access functionality from the underlying `CBMPeripheral`
+  /// that may not be directly exposed by this Peripheral wrapper. The closure receives
+  /// the `CBMPeripheral` instance and can return any value.
+  ///
+  /// Use this method when you need to access Core Bluetooth functionality that hasn't
+  /// been wrapped by this library, such as getting write value lengths or other
+  /// peripheral-specific properties.
+  ///
+  /// Example Usage:
+  /// ```swift
+  /// // Get maximum write length and assign to variable
+  /// var maxLength: Int!
+  /// await peripheral.getPeripheral { cbPeripheral in
+  ///   maxLength = cbPeripheral.maximumWriteValueLength(for: .withoutResponse)
+  /// }
+  ///
+  /// // Get maximum write length with return value
+  /// let maxLength = await peripheral.getPeripheral { cbPeripheral in
+  ///   cbPeripheral.maximumWriteValueLength(for: .withoutResponse)
+  /// }
+  ///
+  /// // Shorthand closure syntax
+  /// let maxLength = await peripheral.getPeripheral {
+  ///   $0.maximumWriteValueLength(for: .withoutResponse)
+  /// }
+  /// ```
+  ///
+  /// - Parameter fn: A closure that takes the underlying `CBMPeripheral` and returns a value of type `T`.
+  /// - Returns: The value returned by the closure.
+  public func withCBPeripheral<T>(fn: (CBMPeripheral) -> T) -> T {
+    return fn(cbPeripheral)
+  }
 
 
   /// The unique identifier associated with the peripheral.
